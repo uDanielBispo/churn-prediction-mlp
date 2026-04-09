@@ -43,6 +43,35 @@ A variável alvo (`target`) indica se o cliente cancelou o serviço (churn) ou n
 
 ---
 
+## Feature Engineering
+
+Após a etapa de preparação dos dados, foram selecionadas e transformadas 25 features para treinamento dos modelos.
+
+# Variáveis numéricas:
+* **Tenure Months**
+* **Churn Score**
+* **CLTV**
+
+# Variáveis categóricas (após encoding):
+* **Parceiro e dependentes:**
+    * Partner_Yes, Dependents_Yes
+* **Serviços de internet:**
+    * Internet Service_Fiber optic, Internet Service_No
+* **Serviços adicionais:**
+    * Segurança, backup, proteção, suporte técnico
+    * Streaming de TV e filmes
+(incluindo categorias "No internet service")
+* **Tipo de contrato:**
+    * Contract_One year, Contract_Two year
+* **Faturamento:**
+    * Paperless Billing_Yes
+* **Métodos de pagamento:**
+    * Payment Method_Credit card (automatic)
+    * Payment Method_Electronic check
+    * Payment Method_Mailed check
+
+Essas variáveis foram escolhidas com base na análise exploratória e representam fatores relevantes para o comportamento de churn dos clientes.
+
 ## Estrutura do Projeto
 
 O projeto segue uma estrutura modular inspirada em boas práticas de engenharia de ML:
@@ -84,6 +113,17 @@ Atualmente, o projeto encontra-se nas etapas iniciais:
 * FastAPI *(planejado)*
 
 ---
+
+## Métricas de Avaliação
+
+Os modelos serão avaliados utilizando métricas adequadas para problemas de classificação binária:
+
+* AUC-ROC
+* F1-Score
+* Precision
+* Recall
+
+A escolha das métricas considera o impacto de falsos positivos e falsos negativos no contexto de churn.
 
 ## Próximos Passos
 
