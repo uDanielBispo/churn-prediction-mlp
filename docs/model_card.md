@@ -134,3 +134,41 @@ Aplicações recomendadas:
 ## 12. Responsáveis
 
 Projeto desenvolvido em grupo como parte de desafio acadêmico de Machine Learning.
+
+## 13. Features Selecionadas
+
+| Coluna (Source) | Descrição | Foi usada no final? | Justificativa |
+|----------------|----------|----------------------|---------------|
+| CustomerID | Identificador único do cliente | Não | ID sem valor preditivo, causa overfitting |
+| Count | Valor constante (1) | Não | Sem variância, não agrega informação |
+| Country | País do cliente | Não | Sem variância |
+| State | Estado | Não | Baixa relevância |
+| City | Cidade | Não | Alta cardinalidade |
+| Zip Code | Código postal | Não | Baixo valor preditivo |
+| Lat Long | Coordenadas combinadas | Não | Redundante |
+| Latitude | Coordenada geográfica | Não | Baixa relevância |
+| Longitude | Coordenada geográfica | Não | Baixa relevância |
+| Gender | Gênero | Sim | Pode influenciar comportamento |
+| Senior Citizen | Idoso | Não | Baixa relevância |
+| Partner | Possui parceiro | Sim | Indica estabilidade |
+| Dependents | Dependentes | Sim | Relacionado à retenção |
+| Tenure Months | Tempo como cliente | Sim | Muito importante |
+| Phone Service | Serviço telefônico | Sim | Uso de serviço |
+| Multiple Lines | Múltiplas linhas | Sim | Engajamento |
+| Internet Service | Tipo de internet | Sim | Impacta churn |
+| Online Security | Segurança | Sim | Reduz churn |
+| Online Backup | Backup | Sim | Uso do serviço |
+| Device Protection | Proteção | Sim | Retenção |
+| Tech Support | Suporte | Sim | Muito relevante |
+| Streaming TV | Streaming TV | Sim | Comportamento |
+| Streaming Movies | Streaming filmes | Sim | Comportamento |
+| Contract | Tipo de contrato | Sim | Muito relevante |
+| Paperless Billing | Fatura digital | Sim | Perfil cliente |
+| Payment Method | Método pagamento | Sim | Impacta churn |
+| Monthly Charges | Valor mensal | Sim | Influencia cancelamento |
+| Total Charges | Total gasto | Não | Redundante |
+| Churn Label | Label textual | Não | Redundante |
+| Churn Value | Target | Sim | Variável alvo |
+| Churn Score | Score churn | Não | Data leakage |
+| CLTV | Lifetime value | Não | Data leakage |
+| Churn Reason | Motivo churn | Não | Data leakage |
