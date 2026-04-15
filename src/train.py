@@ -56,7 +56,9 @@ def train_model(model, model_type, experiment_name, X_train, X_test, y_train, y_
             mlflow.log_metric(name, value)
 
         mlflow.log_artifact(DATA_PATH, artifact_path='dataset')
-        mlflow.sklearn.log_model(model, name='model')
+        mlflow.sklearn.log_model(model, artifact_path='model')
+        # - name='model' (novo jeito) → MLflow cria uma "LoggedModel entity" (conceito novo do 3.x), mas na versão do MLflow que estamos usando, a coluna Models da UI não mostra isso.
+        # - artifact_path='model' (jeito antigo) → Funciona e aparece na coluna Models, mas dá warning de depreciação. Vamos manter usando artifact_path
 
         mlflow.set_tag('stage', 'baseline')
         mlflow.set_tag('dataset', 'telco_churn_processed')
