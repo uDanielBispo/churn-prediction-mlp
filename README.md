@@ -92,13 +92,55 @@ O projeto segue uma estrutura modular inspirada em boas práticas de engenharia 
 
 ## Status do Projeto
 
-Atualmente, o projeto encontra-se nas etapas iniciais:
-
 * ✅ Análise exploratória dos dados (EDA)
-* ✅ Modelos baseline (ex: Regressão Logística)
+* ✅ Modelos baseline (Regressão Logística e Dummy Classifier)
+* ✅ Pipeline de treino automatizado com MLflow
+* ✅ Registro e promoção de modelos no MLflow Model Registry
+* ✅ Testes unitários
 * 🔄 Implementação de rede neural (MLP)
 * ⏳ Construção de API para inferência
 * ⏳ Documentação completa e deploy
+
+---
+
+## Como Executar
+
+### 1. Criar o ambiente virtual e instalar dependências
+
+```bash
+python -m venv venv
+source venv/bin/activate          # macOS/Linux
+# venv\Scripts\activate           # Windows
+
+pip install -r requirements.txt
+```
+
+### 2. Executar o pipeline
+
+Sempre rodar a partir da **raiz do projeto**:
+
+```bash
+# Treina os modelos (LogisticRegression + DummyClassifier) e loga no MLflow
+python src/train.py
+
+# Registra o melhor modelo de cada experimento no Model Registry,
+# promovendo para Production se for melhor que o atual
+python src/register.py
+```
+
+### 3. Rodar os testes
+
+```bash
+pytest tests/unit_tests.py -v
+```
+
+### 4. Visualizar experimentos no MLflow UI
+
+```bash
+mlflow ui --backend-store-uri sqlite:///mlflow.db
+```
+
+Depois acesse [http://localhost:5000](http://localhost:5000).
 
 ---
 
@@ -106,10 +148,11 @@ Atualmente, o projeto encontra-se nas etapas iniciais:
 
 * Python
 * Scikit-Learn
-* PyTorch *(em desenvolvimento)*
 * Pandas & NumPy
 * Matplotlib / Seaborn
-* MLflow *(planejado)*
+* MLflow (tracking + Model Registry)
+* Pytest (testes unitários)
+* PyTorch *(em desenvolvimento)*
 * FastAPI *(planejado)*
 
 ---
