@@ -1,13 +1,13 @@
 # train.py - Responsável por ler os dados e treinar o modelo de predição de churn.
 
 import os
-import pandas as pd
-from sklearn.model_selection import train_test_split
+
 from sklearn.linear_model import LogisticRegression
 from sklearn.dummy import DummyClassifier
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 import mlflow
 import mlflow.sklearn
+
+from utils import load_data, split_data, compute_metrics
 
 # Constantes de caminhos (relativos à raiz do projeto)
 DATA_PATH = 'data/processed/telco_customer_churn_processed.csv'
@@ -45,26 +45,15 @@ def train_model(model, model_type, experiment_name, X_train, X_test, y_train, y_
         y_pred_train = model.predict(X_train)
         y_pred_test = model.predict(X_test)
 
-        train_accuracy = accuracy_score(y_train, y_pred_train)
-        test_accuracy = accuracy_score(y_test, y_pred_test)
-        test_f1 = f1_score(y_test, y_pred_test, zero_division=0)
-        test_precision = precision_score(y_test, y_pred_test, zero_division=0)
-        test_recall = recall_score(y_test, y_pred_test, zero_division=0)
-        overfitting = train_accuracy - test_accuracy
+        metrics = compute_metrics(y_test, y_pred_test, y_train, y_pred_train)
 
         print(f'=== {model_type} ===')
-        print(f'Train Accuracy: {train_accuracy:.4f}')
-        print(f'Test Accuracy:  {test_accuracy:.4f}')
-        print(f'Test F1 Score:  {test_f1:.4f}')
-        print(f'Overfitting:    {overfitting:.4f}')
+        for name, value in metrics.items():
+            print(f'  {name}: {value:.4f}')
 
         mlflow.log_param('model_type', model_type)
-        mlflow.log_metric('train_accuracy', train_accuracy)
-        mlflow.log_metric('test_accuracy', test_accuracy)
-        mlflow.log_metric('test_f1_score', test_f1)
-        mlflow.log_metric('test_precision', test_precision)
-        mlflow.log_metric('test_recall', test_recall)
-        mlflow.log_metric('overfitting', overfitting)
+        for name, value in metrics.items():
+            mlflow.log_metric(name, value)
 
         mlflow.log_artifact(DATA_PATH, artifact_path='dataset')
         mlflow.sklearn.log_model(model, name='model')
@@ -73,10 +62,8 @@ def train_model(model, model_type, experiment_name, X_train, X_test, y_train, y_
         mlflow.set_tag('dataset', 'telco_churn_processed')
 
 
-# Leitura dos dados
-df = pd.read_csv(DATA_PATH)
-X = df.drop(columns=['target'])
-y = df['target']
+# Leitura e split dos dados
+df = load_data(DATA_PATH)
 
 # DIVISÃO EM TREINO E TESTE
 # Esta função divide as linhas: 80% para o modelo estudar e 20% para a prova final.
@@ -106,7 +93,7 @@ y = df['target']
 #
 # Isso é especialmente importante em datasets desbalanceados (como esse). Sem estratificação, cada execução com random_state diferente geraria F1/recall muito diferentes só por acaso do sorteio.
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+X_train, X_test, y_train, y_test = split_data(df)
 
 # Configuração do MLflow
 setup_mlflow()
