@@ -15,8 +15,8 @@ MLFLOW_DB_PATH = os.path.join(os.getcwd(), 'mlflow.db')
 MLRUNS_PATH = os.path.join(os.getcwd(), 'mlruns')
 
 # Constantes de experimentos
-EXPERIMENT_LOGISTIC = 'chrun_prediction_logistic_regression'
-EXPERIMENT_DUMMY = 'chrun_prediction_dummy_classifier'
+EXPERIMENT_LOGISTIC = 'churn_prediction_logistic_regression'
+EXPERIMENT_DUMMY = 'churn_prediction_dummy_classifier'
 
 
 def setup_mlflow():
