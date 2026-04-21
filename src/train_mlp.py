@@ -1,6 +1,7 @@
 import os
 os.environ["LOKY_MAX_CPU_COUNT"] = "1" # Mute loky warnings
 
+import joblib
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -186,6 +187,9 @@ def train_model():
         
         mlflow.pytorch.log_model(model, "model")
         print("\nTreinamento Finalizado e gravado no MLFlow.")
+        
+        joblib.dump(model, os.path.join(os.getcwd(), f'src/models/{experiment_name}_model.pkl'))
+
 
 if __name__ == "__main__":
     import warnings
