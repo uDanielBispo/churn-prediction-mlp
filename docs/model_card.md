@@ -1,133 +1,199 @@
-# Model Card — Churn Prediction (Baseline)
+# Model Card — Churn Prediction (MLP)
 
 ## 1. Visão Geral
 
-Este modelo tem como objetivo prever o churn de clientes em uma operadora de telecomunicações, identificando quais clientes possuem maior probabilidade de cancelamento.
+Este modelo tem como objetivo prever a probabilidade de churn (cancelamento) de clientes em uma empresa de telecomunicações.
 
-A solução busca apoiar estratégias de retenção, permitindo ações preventivas direcionadas aos clientes com maior risco.
+* **Tipo de problema:** Classificação binária
+* **Saída:** Probabilidade de churn (0 a 1) e classificação (churn / não churn)
+* **Objetivo de negócio:** Identificar clientes com alto risco de cancelamento para permitir ações proativas de retenção
 
----
+### Aplicações no negócio:
 
-## 2. Tipo de Modelo
-
-* Problema: Classificação binária
-* Variável alvo: `target` (0 = não cancelou, 1 = cancelou)
-* Modelos atuais:
-
-  * Regressão Logística (baseline)
-  * DummyClassifier (referência mínima)
-
-> Observação: A implementação de uma rede neural (MLP com PyTorch) está em desenvolvimento.
+* Priorização de clientes para campanhas de retenção
+* Redução do churn rate
+* Otimização de custos de marketing
 
 ---
 
-## 3. Dataset
+## 2. Dados Utilizados
 
-* Nome: Telco Customer Churn
-* Tipo: Dados tabulares
-* Contexto: Clientes de uma empresa de telecomunicações
+* **Dataset:** Telco Customer Churn
+* **Tipo:** Dados tabulares
+* **Volume:** Dataset com milhares de registros de clientes
 
-### Principais características:
+### Tipos de variáveis:
 
-* Informações demográficas
-* Tipo de contrato
-* Serviços contratados
-* Tempo de relacionamento
-* Faturamento e pagamento
+* **Comportamentais:**
 
----
+  * Tempo de relacionamento (`Tenure Months`)
+* **Financeiras:**
 
-## 4. Features Utilizadas
+  * `Monthly Charges`, `CLTV`
+* **Serviços contratados:**
 
-Foram utilizadas 25 features após pré-processamento e encoding.
+  * Internet, streaming, suporte técnico
+* **Perfil do cliente:**
 
-### Variáveis numéricas:
+  * Partner, Dependents
 
-* Tenure Months
-* Churn Score
-* CLTV
+### Pré-processamento:
 
-### Variáveis categóricas (codificadas):
+* Encoding de variáveis categóricas (one-hot encoding)
+* Seleção de 25 features relevantes
+* Tratamento de valores ausentes (quando aplicável)
 
-* Partner_Yes, Dependents_Yes
-* Internet Service_Fiber optic, Internet Service_No
-* Serviços adicionais (segurança, backup, suporte, streaming)
-* Contract_One year, Contract_Two year
-* Paperless Billing_Yes
-* Payment Method (diferentes categorias)
+### Considerações importantes:
 
-Essas variáveis foram selecionadas com base na análise exploratória e representam fatores relevantes para o churn.
+* Possível desbalanceamento entre classes (churn vs não churn)
+* Exclusão de variáveis com risco de data leakage
 
 ---
 
-## 5. Métricas de Avaliação
+## 3. Metodologia e Modelagem
+
+### Pipeline:
+
+1. Análise exploratória dos dados (EDA)
+2. Feature engineering
+3. Treinamento de modelos baseline
+4. Treinamento de rede neural (MLP)
+5. Avaliação e comparação
+
+### Modelos utilizados:
+
+* DummyClassifier (baseline mínimo)
+* Regressão Logística
+* **MLP (Multi-Layer Perceptron com PyTorch)**
+
+### MLP:
+
+* Arquitetura definida em `src/model.py`
+* Treinamento via `src/train_mlp.py`
+* Early stopping para evitar overfitting
+
+### Divisão dos dados:
+
+* Treino / validação / teste *(ajustável no pipeline)*
+
+---
+
+## 4. Métricas de Performance
 
 Os modelos são avaliados utilizando:
 
-* AUC-ROC
-* F1-Score
+* ROC-AUC
 * Precision
 * Recall
+* F1-Score
 
-A escolha dessas métricas considera o impacto de erros no contexto de churn, especialmente:
+### Considerações:
 
-* Falsos negativos: clientes que cancelam sem serem identificados
-* Falsos positivos: clientes classificados como risco sem necessidade
+* O problema de churn prioriza **Recall**, pois:
 
----
+  * É mais crítico identificar clientes que irão cancelar
+* Falsos positivos são aceitáveis dentro de limites operacionais
 
-## 6. Resultados (Baseline)
-
-Os modelos baseline apresentam desempenho inicial satisfatório, servindo como referência para evolução do modelo.
-
-> Observação: Os valores numéricos serão atualizados após consolidação dos experimentos e comparação com a MLP.
+> Os valores específicos das métricas devem ser atualizados conforme experimentos finais.
 
 ---
 
-## 7. Limitações
+## 5. Interpretação do Modelo
 
-* O modelo é treinado com dados históricos e pode não refletir mudanças futuras no comportamento dos clientes
-* Possível presença de variáveis correlacionadas que impactam a interpretabilidade
-* Ausência de variáveis externas (ex: concorrência, contexto econômico)
-* Baselines ainda não capturam relações não lineares complexas
+Com base na análise exploratória e features selecionadas:
 
----
+### Principais fatores associados ao churn:
 
-## 8. Vieses e Riscos
+* Baixo tempo de relacionamento
+* Contratos mensais (vs contratos longos)
+* Ausência de serviços adicionais (ex: suporte técnico)
+* Métodos de pagamento específicos (ex: electronic check)
 
-* Possível viés relacionado a perfis específicos de clientes (ex: tipo de contrato ou serviços contratados)
-* O modelo pode favorecer padrões majoritários do dataset
-* Risco de decisões automatizadas impactarem negativamente determinados grupos de clientes
+> A interpretação pode ser aprofundada com técnicas como feature importance ou SHAP (não implementado nesta versão).
 
 ---
 
-## 9. Uso Recomendado
+## 6. Limitações e Riscos
 
-O modelo deve ser utilizado como ferramenta de apoio à decisão, e não como único critério.
-
-Aplicações recomendadas:
-
-* Identificação de clientes com risco de churn
-* Priorização de ações de retenção
-* Suporte a campanhas de marketing
+* O modelo é baseado em dados históricos e pode não refletir mudanças futuras
+* Possível presença de variáveis correlacionadas
+* Não considera fatores externos (ex: concorrência, mercado)
+* MLP pode ter menor interpretabilidade comparado a modelos lineares
 
 ---
 
-## 10. Uso Não Recomendado
+## 7. Fairness e Viés
 
-* Decisões automatizadas sem validação humana
-* Uso em contextos diferentes do dataset original
-* Aplicação direta sem monitoramento contínuo
+* Não foram identificadas variáveis sensíveis explícitas (ex: raça, gênero)
+* Avaliações de fairness não foram realizadas nesta versão
+
+> Recomenda-se análise futura caso o modelo seja aplicado em produção real.
 
 ---
 
-## 11. Próximos Passos
+## 8. Deploy e Uso em Produção
 
-* Implementar modelo MLP com PyTorch
-* Comparar desempenho com baseline
-* Integrar MLflow para rastreamento de experimentos
-* Disponibilizar modelo via API (FastAPI)
-* Atualizar este Model Card com métricas finais
+O modelo foi preparado para uso via API utilizando FastAPI.
+
+### Arquitetura:
+
+* API definida em `src/api/`
+* Endpoint principal:
+
+  * `POST /predict` → retorna previsão de churn
+
+### Uso esperado:
+
+* Integração com sistemas de CRM
+* Execução em batch ou near real-time
+
+---
+
+## 9. Monitoramento
+
+Para uso em produção, recomenda-se monitorar:
+
+* Performance do modelo (AUC, Recall)
+* Data drift nas features
+* Taxa de churn ao longo do tempo
+
+### Ações recomendadas:
+
+* Re-treinamento periódico
+* Alertas para degradação de performance
+
+---
+
+## 10. Reprodutibilidade
+
+O projeto foi estruturado para garantir reprodutibilidade:
+
+* Código modular em `src/`
+* Notebooks para experimentação
+* API desacoplada para inferência
+
+### Execução:
+
+* Treinamento: `python src/train_mlp.py`
+* API: `uvicorn src.api.main:app --reload`
+
+Dependências disponíveis em `requirements.txt`.
+
+---
+
+## 11. Impacto de Negócio (Simulado)
+
+O modelo permite:
+
+* Identificar clientes com maior risco de churn
+* Priorizar ações de retenção
+* Reduzir perdas de receita
+
+Exemplo de uso:
+
+* Selecionar os **top 10% clientes com maior risco**
+* Direcionar campanhas específicas
+
 
 ---
 
