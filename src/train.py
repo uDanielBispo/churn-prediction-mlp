@@ -1,12 +1,12 @@
 # train.py - Responsável por ler os dados e treinar o modelo de predição de churn.
 
 import os
+import mlflow
+import mlflow.sklearn
+import joblib
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.dummy import DummyClassifier
-import mlflow
-import mlflow.sklearn
-
 from utils import load_data, split_data, compute_metrics
 
 # Constantes de caminhos (relativos à raiz do projeto)
@@ -56,12 +56,14 @@ def train_model(model, model_type, experiment_name, X_train, X_test, y_train, y_
             mlflow.log_metric(name, value)
 
         mlflow.log_artifact(DATA_PATH, artifact_path='dataset')
-        mlflow.sklearn.log_model(model, artifact_path='model')
+        mlflow.sklearn.log_model(sk_model=model, name='model', serialization_format="skops")
         # - name='model' (novo jeito) → MLflow cria uma "LoggedModel entity" (conceito novo do 3.x), mas na versão do MLflow que estamos usando, a coluna Models da UI não mostra isso.
         # - artifact_path='model' (jeito antigo) → Funciona e aparece na coluna Models, mas dá warning de depreciação. Vamos manter usando artifact_path
 
         mlflow.set_tag('stage', 'baseline')
         mlflow.set_tag('dataset', 'telco_churn_processed')
+
+        joblib.dump(model, os.path.join(os.getcwd(), f'src/models/{experiment_name}_model.pkl'))
 
 
 # Leitura e split dos dados
@@ -86,6 +88,9 @@ train_model(
     experiment_name=EXPERIMENT_DUMMY,
     X_train=X_train, X_test=X_test, y_train=y_train, y_test=y_test,
 )
+
+
+
 
 # ---
 # Explicação sobre o uso do parãmetro solver='liblinear' em LogisticRegression
