@@ -2,11 +2,11 @@
 
 ## Introdução
 
-A retenção de clientes é um dos principais desafios em empresas de telecomunicações. A perda de clientes (churn) impacta diretamente a receita e o crescimento do negócio.
+A retenção de clientes é um dos principais desafios em empresas de telecomunicações. A perda de clientes (churn) impacta diretamente a receita e o crescimento do negócio, tornando essencial a identificação antecipada de clientes com maior risco de cancelamento.
 
-Este projeto tem como objetivo desenvolver um modelo de Machine Learning capaz de prever quais clientes possuem maior probabilidade de cancelamento, permitindo ações proativas de retenção.
+Este projeto tem como objetivo desenvolver um modelo de Machine Learning capaz de prever churn, permitindo que a empresa atue de forma proativa com estratégias de retenção.
 
-O projeto segue uma abordagem **end-to-end**, desde a análise exploratória dos dados até a preparação para deploy em produção.
+O desenvolvimento segue uma abordagem **end-to-end**, cobrindo desde a análise exploratória dos dados até a preparação do modelo para consumo via API em ambiente de produção.
 
 ---
 
@@ -18,28 +18,21 @@ Desenvolver um sistema preditivo de churn que:
 * Apoie decisões estratégicas de retenção
 * Permita integração futura via API para uso em produção
 
-Além disso, o projeto busca aplicar boas práticas de engenharia de Machine Learning, incluindo:
-
-* Reprodutibilidade
-* Versionamento de experimentos
-* Comparação entre modelos
-* Estruturação profissional do código
+Além disso, o projeto busca aplicar boas práticas de engenharia de Machine Learning.
 
 ---
 
 ## Dataset
 
-O projeto utiliza um dataset de churn de clientes de telecomunicações, contendo informações como:
+O projeto utiliza o dataset **Telco Customer Churn**, contendo:
 
-* Dados demográficos dos clientes
+* Dados demográficos
 * Tipo de contrato
 * Serviços contratados
-* Tempo de relacionamento (tenure)
-* Valor mensal (Monthly Charges)
+* Tempo de relacionamento (`tenure`)
+* Valor mensal (`MonthlyCharges`)
 
-A variável alvo (`target`) indica se o cliente cancelou o serviço (churn) ou não.
-
-> **Observação:** O dataset será versionado e rastreado ao longo do projeto para garantir reprodutibilidade.
+A variável alvo (`target`) indica churn.
 
 ---
 
@@ -74,86 +67,140 @@ Essas variáveis foram escolhidas com base na análise exploratória e represent
 
 ## Estrutura do Projeto
 
-O projeto segue uma estrutura modular inspirada em boas práticas de engenharia de ML:
-
 ```bash
 .
-├── data/           # Dados brutos e processados
-├── docs/           # Documentação (Model Card, arquitetura, etc.)
-├── notebooks/      # Análises exploratórias e experimentos
-├── src/            # Código-fonte (pipeline, modelos, utils)
-├── tests/          # Testes automatizados
-└── README.md       # Documentação principal do projeto
+├── data/
+│   ├── raw/                # Dados originais
+│   └── processed/          # Dados tratados
+├── docs/
+│   ├── model_card.md
+│   └── ML Canvas.md
+├── notebooks/
+│   ├── eda.ipynb
+│   ├── baseline_models.ipynb
+│   └── mlp_training_and_comparison.ipynb
+├── src/
+│   ├── dataset.py
+│   ├── model.py
+│   ├── train.py
+│   ├── train_mlp.py
+│   ├── early_stopping.py
+│   ├── utils.py
+│   ├── register.py
+│   └── api/
+│       ├── main.py
+│       ├── routes.py
+│       ├── schemas.py
+│       ├── services/
+│       │   └── model_service.py
+│       └── core/
+│           └── loggin.py
+├── tests/
+│   └── unit_tests.py
+└── README.md
 ```
 
-> A estrutura está em evolução e será refinada ao longo do desenvolvimento do projeto.
+---
+
+## Como Executar o Projeto
+
+### 1. Clonar o repositório
+
+```bash
+git clone https://github.com/uDanielBispo/churn-prediction-mlp.git
+cd churn-prediction-mlp
+```
 
 ---
 
-## Status do Projeto
-
-* ✅ Análise exploratória dos dados (EDA)
-* ✅ Modelos baseline (Regressão Logística e Dummy Classifier)
-* ✅ Pipeline de treino automatizado com MLflow
-* ✅ Registro e promoção de modelos no MLflow Model Registry
-* ✅ Testes unitários
-* 🔄 Implementação de rede neural (MLP)
-* ⏳ Construção de API para inferência
-* ⏳ Documentação completa e deploy
-
----
-
-## Como Executar
-
-### 1. Criar o ambiente virtual e instalar dependências
+### 2. Criar ambiente virtual
 
 ```bash
 python -m venv venv
-source venv/bin/activate          # macOS/Linux
-# venv\Scripts\activate           # Windows
-
-pip install -r requirements.txt
+source venv/bin/activate   # Linux/macOS
+venv\Scripts\activate      # Windows
 ```
-
-### 2. Executar o pipeline
-
-Sempre rodar a partir da **raiz do projeto**:
-
-```bash
-# Treina os modelos (LogisticRegression + DummyClassifier) e loga no MLflow
-python src/train.py
-
-# Registra o melhor modelo de cada experimento no Model Registry,
-# promovendo para Production se for melhor que o atual
-python src/register.py
-```
-
-### 3. Rodar os testes
-
-```bash
-pytest tests/unit_tests.py -v
-```
-
-### 4. Visualizar experimentos no MLflow UI
-
-```bash
-mlflow ui --backend-store-uri sqlite:///mlflow.db
-```
-
-Depois acesse [http://localhost:5000](http://localhost:5000).
 
 ---
 
-## Tecnologias Utilizadas
+### 3. Instalar dependências
 
-* Python
-* Scikit-Learn
-* Pandas & NumPy
-* Matplotlib / Seaborn
-* MLflow (tracking + Model Registry)
-* Pytest (testes unitários)
-* PyTorch *(em desenvolvimento)*
-* FastAPI *(planejado)*
+```bash
+pip install -r requirements.txt
+```
+
+> Caso o arquivo não esteja completo, instale manualmente:
+
+```bash
+pip install pandas numpy scikit-learn torch fastapi uvicorn matplotlib seaborn
+```
+
+---
+
+## Execução das Etapas
+
+### 📊 1. Análise Exploratória (EDA)
+
+```bash
+jupyter notebook notebooks/eda.ipynb
+```
+
+---
+
+### 📈 2. Modelos Baseline
+
+```bash
+jupyter notebook notebooks/baseline_models.ipynb
+```
+
+---
+
+### 🤖 3. Treinamento da Rede Neural (MLP)
+
+```bash
+jupyter notebook notebooks/mlp_training_and_comparison.ipynb
+```
+
+Ou via script:
+
+```bash
+python src/train_mlp.py
+```
+
+---
+
+## Executando a API
+
+### 1. Subir o servidor
+
+```bash
+uvicorn src.api.main:app --reload
+```
+
+---
+
+### 2. Endpoints disponíveis
+
+* `GET /health` → Verifica status da API
+* `POST /predict` → Realiza previsão de churn
+
+---
+
+### 3. Acessar documentação interativa
+
+Abra no navegador:
+
+```bash
+http://127.0.0.1:8000/docs
+```
+
+---
+
+## Executando Testes
+
+```bash
+pytest tests/
+```
 
 ---
 
@@ -166,28 +213,51 @@ Os modelos serão avaliados utilizando métricas adequadas para problemas de cla
 * Precision
 * Recall
 
-A escolha das métricas considera o impacto de falsos positivos e falsos negativos no contexto de churn.
+---
+
+## Abordagem do Projeto
+
+1. EDA e entendimento do problema
+2. Baselines (Dummy + Regressão Logística)
+3. MLP com PyTorch
+4. API com FastAPI
+5. Documentação e monitoramento
+
+---
+
+## Documentação
+
+* Model Card: `docs/model_card.md`
+* ML Canvas: `docs/ML Canvas.md`
+
+---
+
+## Status do Projeto
+
+* EDA: concluído
+* Baselines: concluído
+* MLP: implementado
+* API: implementada
+* Testes: em evolução
+* MLflow: pendente
+
+---
 
 ## Próximos Passos
 
-* Implementar modelo de rede neural (MLP) com PyTorch
-* Comparar desempenho com modelos baseline
-* Integrar pipeline de dados reprodutível
-* Construir API de inferência com FastAPI
-* Adicionar rastreamento de experimentos com MLflow
-* Criar Model Card e documentação completa
+* Integração com MLflow
+* Expansão de testes automatizados
+* Monitoramento em produção
+* Deploy em nuvem
 
 ---
 
 ## Contribuição
 
-Este projeto está sendo desenvolvido em grupo como parte de um desafio acadêmico de Machine Learning.
-
-A colaboração é feita via branches no GitHub, com versionamento contínuo e organização por responsabilidades.
+Projeto desenvolvido em grupo como parte de desafio acadêmico de Machine Learning.
 
 ---
 
 ## Licença
 
-Projeto para fins educacionais.
-
+Uso educacional.
