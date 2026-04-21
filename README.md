@@ -69,36 +69,43 @@ Essas variáveis foram escolhidas com base na análise exploratória e represent
 
 ```bash
 .
-├── data/
-│   ├── raw/                # Dados originais
-│   └── processed/          # Dados tratados
-├── docs/
-│   ├── model_card.md
-│   └── ML Canvas.md
-├── notebooks/
-│   ├── eda.ipynb
-│   ├── baseline_models.ipynb
-│   └── mlp_training_and_comparison.ipynb
-├── src/
-│   ├── dataset.py
-│   ├── model.py
-│   ├── train.py
-│   ├── train_mlp.py
-│   ├── early_stopping.py
-│   ├── utils.py
-│   ├── register.py
-│   └── api/
-│       ├── main.py
-│       ├── routes.py
-│       ├── schemas.py
-│       ├── services/
-│       │   └── model_service.py
-│       └── core/
-│           └── loggin.py
-├── tests/
-│   └── unit_tests.py
-└── README.md
+├── data/                         # Armazenamento dos dados utilizados no projeto
+│   ├── raw/                      # Dados originais (sem tratamento)
+│   └── processed/                # Dados limpos e preparados para modelagem
+
+├── docs/                         # Documentação do projeto
+│   ├── model_card.md             # Descrição detalhada do modelo, limitações e uso
+│   └── ML Canvas.md              # Definição do problema de negócio e contexto
+
+├── notebooks/                   # Ambiente exploratório (EDA e experimentos)
+│   ├── eda.ipynb                # Análise exploratória dos dados
+│   ├── baseline_models.ipynb    # Treinamento e avaliação dos modelos baseline
+│   └── mlp_training_and_comparison.ipynb  # Treinamento da MLP e comparação com baselines
+
+├── src/                         # Código-fonte principal (estrutura produtiva)
+│   ├── dataset.py               # Carregamento e preparação dos dados
+│   ├── model.py                 # Definição da arquitetura da rede neural (MLP)
+│   ├── train.py                 # Pipeline geral de treinamento (modelos clássicos)
+│   ├── train_mlp.py             # Script de treinamento específico da MLP
+│   ├── early_stopping.py        # Implementação de early stopping para evitar overfitting
+│   ├── utils.py                 # Funções auxiliares reutilizáveis
+│   ├── register.py              # Registro e persistência de modelos/artefatos
+
+│   └── api/                     # Camada de API para inferência do modelo
+│       ├── main.py              # Inicialização da aplicação FastAPI
+│       ├── routes.py            # Definição dos endpoints (ex: /predict, /health)
+│       ├── schemas.py           # Validação de dados de entrada (Pydantic)
+│       ├── services/            # Camada de lógica de negócio da API
+│       │   └── model_service.py # Serviço responsável por carregar modelo e prever
+│       └── core/                # Configurações centrais da API
+│           └── loggin.py        # Configuração de logging estruturado
+
+├── tests/                       # Testes automatizados do projeto
+│   └── unit_tests.py            # Testes unitários das principais funcionalidades
+
+└── README.md                   # Documentação principal e guia do projeto
 ```
+
 
 ---
 
