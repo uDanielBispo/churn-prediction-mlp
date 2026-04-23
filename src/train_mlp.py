@@ -8,7 +8,6 @@ import os
 os.environ["LOKY_MAX_CPU_COUNT"] = "1"  # silencia avisos do joblib/loky
 
 import joblib
-import random
 
 import mlflow
 import mlflow.pytorch
@@ -17,7 +16,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score, f1_score
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
@@ -25,22 +24,10 @@ from src.dataset import ChurnDataset
 from src.early_stopping import EarlyStopping
 from src.model import ChurnMLP
 from src.pipeline import build_preprocessing_pipeline, apply_preprocessing
+from src.utils import find_best_threshold, set_seed
 
 # Raiz do projeto — calculada uma única vez e reutilizada por todas as funções.
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-def set_seed(seed: int = 42) -> None:
-    """Fixa as seeds de todos os geradores aleatórios para garantir reprodutibilidade.
-
-    Sem isso, cada execução do treino produziria pesos iniciais diferentes,
-    tornando impossível comparar resultados entre runs.
-    """
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
 
 
 def setup_mlflow() -> None:
@@ -202,32 +189,6 @@ def evaluate_model(model, test_loader):
             all_targets.extend(batch_y.numpy())
 
     return np.array(all_probs), np.array(all_targets)
-
-
-def find_best_threshold(all_probs, all_targets):
-    """Busca o limiar de classificação que maximiza o F1-Score no conjunto de teste.
-
-    Em vez de usar 0.5 fixo, testa 81 valores entre 0.1 e 0.9 e escolhe o que
-    gera o melhor F1. Isso é importante em datasets desbalanceados: um threshold
-    menor (ex: 0.36) significa que o modelo prefere identificar mais casos de churn
-    mesmo arriscando mais falsos positivos — o que muitas vezes faz sentido no negócio.
-
-    Retorna:
-        best_threshold: float com o melhor valor encontrado.
-        all_preds:      array de previsões binárias (0 ou 1) usando esse threshold.
-    """
-    best_threshold = 0.5
-    best_f1 = 0.0
-
-    for th in np.linspace(0.1, 0.9, 81):
-        preds = (all_probs > th).astype(int)
-        current_f1 = f1_score(all_targets, preds, zero_division=0)
-        if current_f1 > best_f1:
-            best_f1 = current_f1
-            best_threshold = th
-
-    print(f"Limiar de Classificação (Threshold) Selecionado: {best_threshold:.3f}")
-    return best_threshold, (all_probs > best_threshold).astype(int)
 
 
 def log_metrics(all_targets, all_preds, all_probs) -> None:
