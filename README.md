@@ -213,7 +213,7 @@ make lint
 
 | Comando | O que faz |
 |---|---|
-| `make train` | Treina o modelo MLP |
+| `make train` | Treina os modelos de baseline (Logística + Dummy) e a MLP |
 | `make test` | Executa os 29 testes automatizados |
 | `make run` | Sobe a API FastAPI com hot-reload |
 | `make lint` | Verifica o código com ruff |

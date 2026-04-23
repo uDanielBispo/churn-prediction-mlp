@@ -5,11 +5,11 @@
 #   make lint    → verifica qualidade do código com ruff
 #   make test    → executa os testes automatizados com pytest
 #   make run     → sobe a API FastAPI localmente
-#   make train   → treina o modelo MLP
+#   make train   → treina os modelos de baseline e a MLP
 
 # .PHONY declara que esses alvos são comandos, não arquivos.
 # Sem isso, se existir um arquivo chamado 'test' na pasta, o make o ignoraria.
-.PHONY: lint test run train train-baselines
+.PHONY: lint test run train
 
 # Verifica o código em busca de erros de estilo e problemas lógicos.
 # As regras são definidas no pyproject.toml (seção [tool.ruff]).
@@ -29,9 +29,5 @@ run:
 # Usa '-m' para rodar como módulo a partir da raiz do projeto,
 # garantindo que os imports 'from src.X import Y' funcionem corretamente.
 train:
-	python -m src.train_mlp
-
-# Treina os modelos de baseline (Regressão Logística e DummyClassifier) e salva em src/models/.
-# Necessário rodar antes de subir a API pela primeira vez.
-train-baselines:
 	python -m src.train_baselines
+	python -m src.train_mlp
