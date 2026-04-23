@@ -74,38 +74,41 @@ Essas variáveis foram escolhidas com base na análise exploratória e represent
 │   └── processed/                # Dados limpos e preparados para modelagem
 
 ├── docs/                         # Documentação do projeto
-│   ├── model_card.md             # Descrição detalhada do modelo, limitações e uso
-│   ├── architecture.md           # Descrição do fluxo do modelo detalhado
-│   ├── monitoring.md             # Descrição do fluxo de monitoramento do modelo
-│   └── ML Canvas.md              # Definição do problema de negócio e contexto
+│   ├── architecture.md           # Fluxo do sistema end-to-end
+│   ├── monitoring.md             # Estratégia de monitoramento em produção
+│   └── refatoracao.md            # Comparativo antes/depois da refatoração
 
-├── notebooks/                   # Ambiente exploratório (EDA e experimentos)
-│   ├── eda.ipynb                # Análise exploratória dos dados
-│   ├── baseline_models.ipynb    # Treinamento e avaliação dos modelos baseline
+├── notebooks/                    # Ambiente exploratório (EDA e experimentos)
 │   └── mlp_training_and_comparison.ipynb  # Treinamento da MLP e comparação com baselines
 
-├── src/                         # Código-fonte principal (estrutura produtiva)
-│   ├── dataset.py               # Carregamento e preparação dos dados
-│   ├── model.py                 # Definição da arquitetura da rede neural (MLP)
-│   ├── train.py                 # Pipeline geral de treinamento (modelos clássicos)
-│   ├── train_mlp.py             # Script de treinamento específico da MLP
-│   ├── early_stopping.py        # Implementação de early stopping para evitar overfitting
-│   ├── utils.py                 # Funções auxiliares reutilizáveis
-│   ├── register.py              # Registro e persistência de modelos/artefatos
+├── src/                          # Código-fonte principal
+│   ├── dataset.py                # Dataset customizado para PyTorch (ChurnDataset)
+│   ├── early_stopping.py         # Early stopping para evitar overfitting
+│   ├── model.py                  # Arquitetura da rede neural MLP (ChurnMLP)
+│   ├── pipeline.py               # Pipeline sklearn de pré-processamento (StandardScaler)
+│   ├── train_mlp.py              # Script de treinamento da MLP com MLflow
+│   ├── models/                   # Artefatos treinados (.pkl)
+│   └── api/                      # Serviço de inferência
+│       ├── main.py               # Inicialização do FastAPI e middleware de latência
+│       ├── routes.py             # Endpoints: GET /health, POST /predict
+│       ├── schemas.py            # Validação de entrada com Pydantic (CustomerData)
+│       ├── services/
+│       │   └── model_service.py  # Carregamento dos modelos e lógica de predição
+│       └── core/
+│           └── logger.py         # Logger estruturado (timestamp | nível | módulo)
 
-│   └── api/                     # Camada de API para inferência do modelo
-│       ├── main.py              # Inicialização da aplicação FastAPI
-│       ├── routes.py            # Definição dos endpoints (ex: /predict, /health)
-│       ├── schemas.py           # Validação de dados de entrada (Pydantic)
-│       ├── services/            # Camada de lógica de negócio da API
-│       │   └── model_service.py # Serviço responsável por carregar modelo e prever
-│       └── core/                # Configurações centrais da API
-│           └── loggin.py        # Configuração de logging estruturado
+├── tests/                        # Testes automatizados
+│   ├── test_smoke.py             # Smoke tests do pipeline de treinamento
+│   ├── test_schema.py            # Validação do schema do CSV com Pandera
+│   └── test_api.py               # Testes dos endpoints da API
 
-├── tests/                       # Testes automatizados do projeto
-│   └── unit_tests.py            # Testes unitários das principais funcionalidades
+├── eda_ciclo_de_vida_de_modelos_sem_mlp_pytorch/  # Fase 1 do projeto (baseline)
+│   ├── src/                      # Regressão Logística + DummyClassifier com MLflow
+│   └── tests/                    # Testes unitários dos modelos baseline
 
-└── README.md                   # Documentação principal e guia do projeto
+├── pyproject.toml                # Dependências, ruff e pytest centralizados
+├── Makefile                      # Atalhos: make lint | test | run | train
+└── README.md                     # Documentação principal
 ```
 
 
@@ -122,94 +125,139 @@ cd churn-prediction-mlp
 
 ---
 
-### 2. Criar ambiente virtual
+### 2. Criar o ambiente virtual
+
+> **Atenção:** use Python 3.11 especificamente. Versões mais recentes (3.12+) ainda não possuem suporte completo ao PyTorch.
 
 ```bash
-python -m venv venv
-source venv/bin/activate   # Linux/macOS
-venv\Scripts\activate      # Windows
+python3.11 -m venv .venv
+source .venv/bin/activate    # macOS/Linux
+.venv\Scripts\activate       # Windows
 ```
 
 ---
 
-### 3. Instalar dependências
+### 3. Instalar o projeto e suas dependências
+
+O comando abaixo instala todas as dependências (produção + desenvolvimento) e registra o projeto como pacote, permitindo que os imports `from src.X import Y` funcionem corretamente:
 
 ```bash
-pip install -r requirements.txt
-```
-
-> Caso o arquivo não esteja completo, instale manualmente:
-
-```bash
-pip install pandas numpy scikit-learn torch fastapi uvicorn matplotlib seaborn
+pip install -e ".[dev]"
 ```
 
 ---
 
-## Execução das Etapas
-
-### 📊 1. Análise Exploratória (EDA)
+### 4. Treinar o modelo MLP
 
 ```bash
-jupyter notebook notebooks/eda.ipynb
+python -m src.train_mlp
+```
+
+> O `-m` é necessário para rodar como módulo a partir da raiz do projeto. Usar `python src/train_mlp.py` diretamente causa erro de import.
+
+Os artefatos gerados ficam em:
+- `src/models/churn_prediction_mlp_pytorch_model.pkl` — modelo treinado
+- `src/models/preprocessor.pkl` — pipeline de pré-processamento
+- `best_mlp_model.pth` — pesos do melhor checkpoint
+
+---
+
+### 5. Executar os testes
+
+```bash
+pytest tests/ -v
+```
+
+Ou usando o Makefile:
+
+```bash
+make test
 ```
 
 ---
 
-### 📈 2. Modelos Baseline
-
-```bash
-jupyter notebook notebooks/baseline_models.ipynb
-```
-
----
-
-### 🤖 3. Treinamento da Rede Neural (MLP)
-
-```bash
-jupyter notebook notebooks/mlp_training_and_comparison.ipynb
-```
-
-Ou via script:
-
-```bash
-python src/train_mlp.py
-```
-
----
-
-## Executando a API
-
-### 1. Subir o servidor
+### 6. Subir a API
 
 ```bash
 uvicorn src.api.main:app --reload
 ```
 
----
-
-### 2. Endpoints disponíveis
-
-* `GET /health` → Verifica status da API
-* `POST /predict` → Realiza previsão de churn
-
----
-
-### 3. Acessar documentação interativa
-
-Abra no navegador:
+Ou usando o Makefile:
 
 ```bash
-http://127.0.0.1:8000/docs
+make run
+```
+
+Acesse a documentação interativa em: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+**Endpoints disponíveis:**
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `GET` | `/health` | Verifica se a API está no ar |
+| `POST` | `/predict?model_type=logistic` | Previsão com Regressão Logística (padrão) |
+| `POST` | `/predict?model_type=mlp` | Previsão com rede neural MLP |
+| `POST` | `/predict?model_type=dummy` | Previsão com modelo baseline |
+
+**Exemplo de requisição:**
+
+```bash
+curl -X POST "http://localhost:8000/predict?model_type=mlp" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "Tenure_Months": 2,
+    "Monthly_Charges": 70.0,
+    "Gender_Male": 0,
+    "Partner_Yes": 0,
+    "Dependents_Yes": 0,
+    "Phone_Service_Yes": 1,
+    "Multiple_Lines_No_phone_service": 0,
+    "Multiple_Lines_Yes": 0,
+    "Internet_Service_Fiber_optic": 1,
+    "Internet_Service_No": 0,
+    "Online_Security_No_internet_service": 0,
+    "Online_Security_Yes": 0,
+    "Online_Backup_No_internet_service": 0,
+    "Online_Backup_Yes": 0,
+    "Device_Protection_No_internet_service": 0,
+    "Device_Protection_Yes": 0,
+    "Tech_Support_No_internet_service": 0,
+    "Tech_Support_Yes": 0,
+    "Streaming_TV_No_internet_service": 0,
+    "Streaming_TV_Yes": 0,
+    "Streaming_Movies_No_internet_service": 0,
+    "Streaming_Movies_Yes": 0,
+    "Contract_One_year": 0,
+    "Contract_Two_year": 0,
+    "Paperless_Billing_Yes": 1,
+    "Payment_Method_Credit_card_automatic": 0,
+    "Payment_Method_Electronic_check": 1,
+    "Payment_Method_Mailed_check": 0
+  }'
+```
+
+> Perfil de alto risco: contrato mês a mês, 2 meses de relacionamento, internet fibra ótica e pagamento por boleto eletrônico. Resposta esperada: `{"churn": 1}`.
+>
+> Substitua `model_type=mlp` por `logistic` ou `dummy` para testar os outros modelos.
+
+---
+
+### 7. Verificar qualidade do código
+
+```bash
+make lint
 ```
 
 ---
 
-## Executando Testes
+## Atalhos do Makefile
 
-```bash
-pytest tests/
-```
+| Comando | O que faz |
+|---|---|
+| `make train` | Treina os modelos de baseline (Logística + Dummy) e a MLP |
+| `make test` | Executa os 29 testes automatizados |
+| `make run` | Sobe a API FastAPI com hot-reload |
+| `make lint` | Verifica o código com ruff |
 
 ---
 
@@ -255,21 +303,22 @@ A documentação do projeto está organizada na pasta `docs/` e cobre desde aspe
 
 ## Status do Projeto
 
-* EDA: concluído
-* Baselines: concluído
-* MLP: implementado
-* API: implementada
-* Testes: em evolução
-* MLflow: pendente
+* ✅ EDA e análise exploratória
+* ✅ Modelos baseline (Regressão Logística + DummyClassifier com MLflow)
+* ✅ Rede neural MLP com PyTorch
+* ✅ Pipeline sklearn reprodutível (sem data leakage)
+* ✅ API FastAPI com logging estruturado e middleware de latência
+* ✅ 29 testes automatizados (smoke, schema com Pandera, endpoints)
+* ✅ Infraestrutura: pyproject.toml, Makefile, ruff
+* ⏳ Deploy em nuvem
 
 ---
 
 ## Próximos Passos
 
-* Integração com MLflow
-* Expansão de testes automatizados
-* Monitoramento em produção
-* Deploy em nuvem
+* Deploy em ambiente cloud
+* Containerização com Docker
+* Monitoramento contínuo em produção
 
 ---
 
