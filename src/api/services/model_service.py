@@ -5,9 +5,11 @@
 
 import joblib
 import numpy as np
+import pandas as pd
 import torch
 
 from src.api.core.logger import get_logger
+from src.pipeline import OUTPUT_COLS
 
 logger = get_logger(__name__)
 
@@ -27,6 +29,9 @@ logger.info("Modelo carregado: LogisticRegression")
 
 mlp_model = joblib.load("src/models/churn_prediction_mlp_pytorch_model.pkl")
 logger.info("Modelo carregado: MLP PyTorch")
+
+preprocessor = joblib.load("src/models/preprocessor.pkl")
+logger.info("Preprocessor carregado: StandardScaler")
 
 
 def _build_features(data) -> np.ndarray:
@@ -97,12 +102,17 @@ def mlp_predict(data) -> int:
     torch.no_grad() desativa o cálculo de gradientes, pois não há treino aqui —
     isso economiza memória e acelera a inferência.
     torch.sigmoid() converte o logit bruto da rede em probabilidade [0, 1].
+
+    O preprocessor aplica o mesmo StandardScaler usado no treino — sem isso,
+    Tenure Months e Monthly Charges chegam na escala errada e a rede prevê mal.
     """
     features = _build_features(data)
+    df = pd.DataFrame(features, columns=OUTPUT_COLS)
+    features_scaled = preprocessor.transform(df)
 
     mlp_model.eval()
     with torch.no_grad():
-        x = torch.tensor(features, dtype=torch.float32)
+        x = torch.tensor(features_scaled, dtype=torch.float32)
         logit = mlp_model(x)
         prob = torch.sigmoid(logit)
         return int((prob > 0.5).item())
