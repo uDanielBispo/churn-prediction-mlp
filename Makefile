@@ -9,7 +9,7 @@
 
 # .PHONY declara que esses alvos são comandos, não arquivos.
 # Sem isso, se existir um arquivo chamado 'test' na pasta, o make o ignoraria.
-.PHONY: lint test run train
+.PHONY: lint test run train train-baselines
 
 # Verifica o código em busca de erros de estilo e problemas lógicos.
 # As regras são definidas no pyproject.toml (seção [tool.ruff]).
@@ -30,3 +30,8 @@ run:
 # garantindo que os imports 'from src.X import Y' funcionem corretamente.
 train:
 	python -m src.train_mlp
+
+# Treina os modelos de baseline (Regressão Logística e DummyClassifier) e salva em src/models/.
+# Necessário rodar antes de subir a API pela primeira vez.
+train-baselines:
+	python -m src.train_baselines
