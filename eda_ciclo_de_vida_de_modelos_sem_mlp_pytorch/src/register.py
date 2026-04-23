@@ -52,8 +52,8 @@ MLRUNS_PATH = os.path.join(os.getcwd(), 'mlruns')
 # - Windows: C:\Users\daniel\...\churn-prediction-mlp\mlflow.db
 
 # Constantes de experimentos e nomes dos modelos no Model Registry
-EXPERIMENT_LOGISTIC = 'churn_prediction_logistic_regression'
-EXPERIMENT_DUMMY = 'churn_prediction_dummy_classifier'
+EXPERIMENT_LOGISTIC = 'chrun_prediction_logistic_regression'
+EXPERIMENT_DUMMY = 'chrun_prediction_dummy_classifier'
 
 MODEL_NAME_LOGISTIC = 'churn-logistic-regression'
 MODEL_NAME_DUMMY = 'churn-dummy-classifier'

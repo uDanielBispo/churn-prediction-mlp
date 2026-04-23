@@ -53,7 +53,6 @@ def sample_csv(tmp_path):
     # mas não precisam ser realistas. Qualquer número serviria - o objetivo é só
     # ter um DataFrame com a estrutura esperada (features numéricas + target 0/1).
     df = pd.DataFrame({
-        'Monthly Charges': np.random.uniform(20, 120, n),
         'Tenure Months': np.random.randint(1, 72, n),
         'Churn Score': np.random.randint(5, 100, n),
         'CLTV': np.random.randint(2000, 6500, n),
