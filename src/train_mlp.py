@@ -24,6 +24,7 @@ from torch.utils.data import DataLoader
 from src.dataset import ChurnDataset
 from src.early_stopping import EarlyStopping
 from src.model import ChurnMLP
+from src.pipeline import build_preprocessing_pipeline, apply_preprocessing
 
 # Raiz do projeto — calculada uma única vez e reutilizada por todas as funções.
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -278,6 +279,15 @@ def train_model() -> None:
     data_path = os.path.join(ROOT_DIR, 'data', 'processed', 'telco_customer_churn_processed.csv')
 
     df_train, df_val, df_test = load_and_split_data(data_path)
+
+    # Aplica o pipeline de pré-processamento: normaliza numéricas, mantém binárias.
+    # O preprocessor é salvo em disco para ser reutilizado pela API na inferência.
+    preprocessor = build_preprocessing_pipeline()
+    df_train, df_val, df_test = apply_preprocessing(preprocessor, df_train, df_val, df_test)
+
+    preprocessor_path = os.path.join(ROOT_DIR, 'src', 'models', 'preprocessor.pkl')
+    joblib.dump(preprocessor, preprocessor_path)
+
     train_loader, val_loader, test_loader = create_dataloaders(df_train, df_val, df_test, batch_size)
 
     # input_dim é o número de features — lido direto do dataset para não hardcodar
@@ -305,6 +315,7 @@ def train_model() -> None:
             "hidden_dim_1": 64,
             "hidden_dim_2": 32,
             "dropout_rate": 0.3,
+            "preprocessing": "StandardScaler em colunas numéricas",
         })
 
         model = run_training_loop(
