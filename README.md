@@ -75,6 +75,8 @@ Essas variáveis foram escolhidas com base na análise exploratória e represent
 
 ├── docs/                         # Documentação do projeto
 │   ├── model_card.md             # Descrição detalhada do modelo, limitações e uso
+│   ├── architecture.md           # Descrição do fluxo do modelo detalhado
+│   ├── monitoring.md             # Descrição do fluxo de monitoramento do modelo
 │   └── ML Canvas.md              # Definição do problema de negócio e contexto
 
 ├── notebooks/                   # Ambiente exploratório (EDA e experimentos)
@@ -234,8 +236,20 @@ Os modelos serão avaliados utilizando métricas adequadas para problemas de cla
 
 ## Documentação
 
-* Model Card: `docs/model_card.md`
-* ML Canvas: `docs/ML Canvas.md`
+A documentação do projeto está organizada na pasta `docs/` e cobre desde aspectos técnicos do modelo até arquitetura e monitoramento:
+
+* **Model Card** (`docs/model_card.md`)
+  Descreve o modelo de churn, incluindo dados utilizados, metodologia, métricas, limitações e aplicações no negócio.
+
+* **Architecture** (`docs/architecture.md`)
+  Explica o funcionamento do sistema end-to-end, incluindo fluxo de dados, pipeline de treinamento e integração com a API.
+
+* **Monitoring** (`docs/monitoring.md`)
+  Define a estratégia de monitoramento do modelo em produção, incluindo métricas, detecção de drift e plano de re-treinamento.
+
+* **ML Canvas** (`docs/ML Canvas.md`)
+  Apresenta o contexto de negócio, problema a ser resolvido e proposta de valor do projeto.
+
 
 ---
 
