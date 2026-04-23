@@ -1,3 +1,16 @@
+"""
+    carrega dados, instancia o modelo, executa o loop de treino e avalia.
+
+     Divisão dos dados em três partes:
+
+      df_train_val, df_test = train_test_split(df, test_size=0.2, stratify=df['target'])
+      df_train, df_val = train_test_split(df_train_val, test_size=0.2, stratify=df_train_val['target'])
+
+      Diferente do treino feito para o baseline com regressao logistica que dividia em dois (treino/teste), aqui são três partes:
+      - Treino (64%) — o modelo aprende com esses dados
+      - Validação (16%) — usado em cada epoch para checar se está overfittando (o early stopping monitora a loss aqui)
+      - Teste (20%) — usado só no final, para a avaliação final, igual foi feito no baseline
+"""
 import os
 os.environ["LOKY_MAX_CPU_COUNT"] = "1" # Mute loky warnings
 
@@ -63,7 +76,9 @@ def train_model():
     train_dataset = ChurnDataset(df_train)
     val_dataset = ChurnDataset(df_val)
     test_dataset = ChurnDataset(df_test)
-    
+
+    # Em vez de passar todos os 4500 exemplos de uma vez para a rede, o DataLoader divide em mini-lotes de 64.
+    # A cada época, a rede vê todos os lotes um por um. O shuffle=True embaralha a ordem a cada época para o modelo não memorizar a sequência.
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -99,18 +114,27 @@ def train_model():
         
         print("Iniciando Treinamento...")
         for epoch in range(num_epochs):
-            model.train()
+            model.train()       # ativa Dropout e BatchNorm no modo treino
             train_loss = 0.0
             
             # Loop de batches (Epoch de Treino)
             for batch_X, batch_y in train_loader:
-                optimizer.zero_grad()
-                outputs = model(batch_X)
-                loss = criterion(outputs, batch_y)
-                loss.backward()
-                optimizer.step()
-                train_loss += loss.item() * batch_X.size(0)
+                """
+                O ciclo interno (zero_grad -> forward -> loss -> backward -> step) é o coração do aprendizado de qualquer rede neural. Em termos simples:
+                1. A rede chuta uma resposta (forward)
+                2. Calculamos o quão errado foi o chute (loss)
+                3. Calculamos em qual direção cada peso contribuiu para o erro (backward)
+                4. Ajustamos os pesos um pouquinho na direção que reduz o erro (step)
                 
+                Repetido milhares de vezes, o modelo vai convergindo para pesos que erram cada vez menos.
+                """
+                optimizer.zero_grad()                    # zera os gradientes acumulados do passo anterior
+                outputs = model(batch_X)                 # passagem forward: gera previsões
+                loss = criterion(outputs, batch_y)       # calcula o erro (BCEWithLogitsLoss)
+                loss.backward()                          # backpropagation: calcula gradientes
+                optimizer.step()                         # ajusta os pesos na direção certa
+                train_loss += loss.item() * batch_X.size(0)
+
             train_loss = train_loss / len(train_dataset)
             
             # Loop de batches (Epoch de Validação)
