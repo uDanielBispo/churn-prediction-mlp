@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class CustomerData(BaseModel):
     Tenure_Months: float
     Monthly_Charges: float

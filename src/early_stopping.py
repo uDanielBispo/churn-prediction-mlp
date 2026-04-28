@@ -1,6 +1,8 @@
+import os
+
 import numpy as np
 import torch
-import os
+
 
 class EarlyStopping:
     """
@@ -27,7 +29,7 @@ class EarlyStopping:
         self.early_stop = False       # flag que sinaliza para o loop de treino parar
 
     '''
-     O __call__ faz com que o objeto seja chamável como uma função — early_stopping(val_loss, model). 
+     O __call__ faz com que o objeto seja chamável como uma função — early_stopping(val_loss, model).
      A cada epoch, verifica se a loss melhorou. Se sim, salva o modelo e zera o contador. Se não, incrementa o contador. Quando
      o contador atinge o limite de paciência, levanta a flag early_stop.
     '''
@@ -49,7 +51,7 @@ class EarlyStopping:
             # state_dict() retorna um dicionário com todos os pesos da rede neural.
             # Só salva quando a loss melhora, então no final você tem os pesos do melhor momento do treino, não do último.
             torch.save(model.state_dict(), self.save_path)
-            
+
     def load_best_model(self, model: torch.nn.Module) -> torch.nn.Module:
         """
         Carrega os pesos do melhor modelo no arquivo configurado.
