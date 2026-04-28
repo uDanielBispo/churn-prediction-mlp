@@ -10,7 +10,6 @@
 import os
 
 import pandas as pd
-import pandera.pandas as pa
 import pytest
 from pandera.pandas import Check, Column, DataFrameSchema
 

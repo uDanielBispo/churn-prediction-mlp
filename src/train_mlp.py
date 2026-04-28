@@ -5,10 +5,10 @@
 #   - Validação(16%) — monitorado pelo early stopping a cada época
 #   - Teste    (20%) — avaliação final, igual ao conjunto usado no baseline
 import os
+
 os.environ["LOKY_MAX_CPU_COUNT"] = "1"  # silencia avisos do joblib/loky
 
 import joblib
-
 import mlflow
 import mlflow.pytorch
 import numpy as np
@@ -16,14 +16,14 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.metrics import accuracy_score, precision_score, recall_score, roc_auc_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
 from src.dataset import ChurnDataset
 from src.early_stopping import EarlyStopping
 from src.model import ChurnMLP
-from src.pipeline import build_preprocessing_pipeline, apply_preprocessing
+from src.pipeline import apply_preprocessing, build_preprocessing_pipeline
 from src.utils import find_best_threshold, set_seed
 
 # Raiz do projeto — calculada uma única vez e reutilizada por todas as funções.
