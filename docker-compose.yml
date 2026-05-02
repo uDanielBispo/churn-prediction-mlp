@@ -1,0 +1,30 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+
+  mlflow:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: sh -c "mlflow db upgrade sqlite:////app/mlflow.db && mlflow ui --backend-store-uri sqlite:////app/mlflow.db --default-artifact-root file:///app/mlruns --host 0.0.0.0 --port 5000"
+
+  train:
+    build: .
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: sh -c "mlflow db upgrade sqlite:////app/mlflow.db && python -m src.train_mlp"
+    depends_on:
+      - mlflow
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: "no"
