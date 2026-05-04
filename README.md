@@ -24,7 +24,13 @@ Além disso, o projeto busca aplicar boas práticas de engenharia de Machine Lea
 
 ## Dataset
 
-O projeto utiliza o dataset **Telco Customer Churn**, contendo:
+O projeto utiliza o dataset **Telco Customer Churn**, amplamente utilizado para problemas de previsão de churn em telecomunicações.
+
+* **Tipo:** Dados tabulares
+* **Volume:** ~7.000 clientes
+* **Problema:** Classificação binária (churn vs não churn)
+
+### Características:
 
 * Dados demográficos
 * Tipo de contrato
@@ -32,9 +38,16 @@ O projeto utiliza o dataset **Telco Customer Churn**, contendo:
 * Tempo de relacionamento (`tenure`)
 * Valor mensal (`MonthlyCharges`)
 
-A variável alvo (`target`) indica churn.
+A variável alvo (`target`) indica se o cliente cancelou o serviço.
 
----
+### Considerações importantes:
+
+* O dataset apresenta **desbalanceamento de classes**, comum em problemas de churn
+* Foi adotado um pipeline de pré-processamento para evitar **data leakage**
+* Os dados são separados em:
+
+  * `data/raw/` → dados originais
+  * `data/processed/` → dados tratados
 
 ## Feature Engineering
 
@@ -67,50 +80,58 @@ Essas variáveis foram escolhidas com base na análise exploratória e represent
 
 ## Estrutura do Projeto
 
-```bash
-.
-├── data/                         # Armazenamento dos dados utilizados no projeto
-│   ├── raw/                      # Dados originais (sem tratamento)
-│   └── processed/                # Dados limpos e preparados para modelagem
+├── data/                         # Dados utilizados no projeto
+│   ├── raw/                      # Dados originais (imutáveis)
+│   │   └── Telco_customer_churn.csv
+│   └── processed/                # Dados tratados para modelagem
+│       └── telco_customer_churn_processed.csv
 
-├── docs/                         # Documentação do projeto
-│   ├── architecture.md           # Fluxo do sistema end-to-end
+├── docs/                         # Documentação técnica e de negócio
+│   ├── model_card.md             # Documentação do modelo (uso, métricas, riscos)
+│   ├── architecture.md           # Arquitetura end-to-end do sistema
 │   ├── monitoring.md             # Estratégia de monitoramento em produção
-│   └── refatoracao.md            # Comparativo antes/depois da refatoração
+│   ├── ML Canvas.md              # Contexto de negócio e proposta de valor
+│   └── refatoracao.md            # Evolução e melhorias do projeto
 
-├── notebooks/                    # Ambiente exploratório (EDA e experimentos)
-│   └── mlp_training_and_comparison.ipynb  # Treinamento da MLP e comparação com baselines
+├── notebooks/                    # Ambiente exploratório e experimentação
+│   ├── eda.ipynb                 # Análise exploratória dos dados
+│   ├── baseline_models.ipynb     # Modelos baseline (Dummy + Regressão Logística)
+│   └── mlp_training_and_comparison.ipynb  # Treino da MLP e comparação de desempenho
 
-├── src/                          # Código-fonte principal
+├── src/                          # Código-fonte principal (produção)
 │   ├── dataset.py                # Dataset customizado para PyTorch (ChurnDataset)
+│   ├── pipeline.py               # Pipeline de pré-processamento (padronização e consistência)
+│   ├── model.py                  # Arquitetura da rede neural MLP
+│   ├── train_baselines.py        # Treinamento dos modelos baseline (Dummy + Logística)
+│   ├── train_mlp.py              # Treinamento da MLP com MLflow
 │   ├── early_stopping.py         # Early stopping para evitar overfitting
-│   ├── model.py                  # Arquitetura da rede neural MLP (ChurnMLP)
-│   ├── pipeline.py               # Pipeline sklearn de pré-processamento (StandardScaler)
-│   ├── train_mlp.py              # Script de treinamento da MLP com MLflow
-│   ├── models/                   # Artefatos treinados (.pkl)
-│   └── api/                      # Serviço de inferência
-│       ├── main.py               # Inicialização do FastAPI e middleware de latência
-│       ├── routes.py             # Endpoints: GET /health, POST /predict
-│       ├── schemas.py            # Validação de entrada com Pydantic (CustomerData)
+│   ├── utils.py                  # Funções auxiliares do projeto
+│   ├── models/                   # Artefatos treinados (modelos e preprocessador)
+│   └── api/                      # API de inferência (FastAPI)
+│       ├── main.py               # Inicialização da aplicação e middlewares
+│       ├── routes.py             # Definição dos endpoints (/health, /predict)
+│       ├── schemas.py            # Validação de entrada com Pydantic
 │       ├── services/
-│       │   └── model_service.py  # Carregamento dos modelos e lógica de predição
+│       │   └── model_service.py  # Lógica de carregamento e predição do modelo
 │       └── core/
-│           └── logger.py         # Logger estruturado (timestamp | nível | módulo)
+│           └── logger.py         # Logger estruturado da aplicação
 
 ├── tests/                        # Testes automatizados
-│   ├── test_smoke.py             # Smoke tests do pipeline de treinamento
-│   ├── test_schema.py            # Validação do schema do CSV com Pandera
+│   ├── test_smoke.py             # Teste básico do pipeline de treinamento
+│   ├── test_schema.py            # Validação de dados com Pandera
 │   └── test_api.py               # Testes dos endpoints da API
 
-├── eda_ciclo_de_vida_de_modelos_sem_mlp_pytorch/  # Fase 1 do projeto (baseline)
-│   ├── src/                      # Regressão Logística + DummyClassifier com MLflow
-│   └── tests/                    # Testes unitários dos modelos baseline
+├── eda_ciclo_de_vida_de_modelos_sem_mlp_pytorch/  # Versão inicial do projeto (baseline)
+│   ├── src/                      # Implementação inicial dos modelos
+│   └── tests/                    # Testes da fase inicial
 
-├── pyproject.toml                # Dependências, ruff e pytest centralizados
-├── Makefile                      # Atalhos: make lint | test | run | train
+├── Dockerfile                    # Definição da imagem Docker da aplicação
+├── docker-compose.yml            # Orquestração do serviço da API
+├── pyproject.toml                # Gerenciamento de dependências e ferramentas (ruff, pytest)
+├── requirements.txt              # Dependências para ambientes alternativos
+├── Makefile                      # Comandos utilitários (train, test, run, lint)
+├── RUNNING.md                    # Guia adicional de execução do projeto
 └── README.md                     # Documentação principal
-```
-
 
 ---
 
@@ -282,6 +303,55 @@ Os modelos serão avaliados utilizando métricas adequadas para problemas de cla
 
 ---
 
+## Pipeline de Dados
+
+O projeto utiliza um pipeline de pré-processamento centralizado (`src/pipeline.py`) responsável por garantir consistência entre as etapas de treinamento e inferência.
+
+Principais responsabilidades:
+
+* Padronização dos dados (StandardScaler)
+* Reutilização do mesmo pipeline em treino e produção
+* Prevenção de data leakage
+
+O pipeline é salvo como artefato (`preprocessor.pkl`) e carregado automaticamente pela API durante as previsões.
+
+## Rastreamento de Experimentos
+
+O treinamento dos modelos utiliza **MLflow** para rastreamento de experimentos.
+
+Isso permite:
+
+* Comparar diferentes modelos (baseline vs MLP)
+* Registrar métricas automaticamente
+* Versionar execuções de treinamento
+
+Facilitando análise de performance e reprodutibilidade.
+
+## Execução com Docker
+
+O projeto também pode ser executado utilizando Docker.
+
+### Build da imagem:
+
+```bash
+docker build -t churn-mlp .
+```
+
+### Subir o serviço:
+
+```bash
+docker-compose up
+```
+
+A API ficará disponível em:
+
+```
+http://localhost:8000
+```
+
+Essa abordagem facilita a portabilidade e o deploy do sistema.
+
+
 ## Documentação
 
 A documentação do projeto está organizada na pasta `docs/` e cobre desde aspectos técnicos do modelo até arquitetura e monitoramento:
@@ -298,27 +368,6 @@ A documentação do projeto está organizada na pasta `docs/` e cobre desde aspe
 * **ML Canvas** (`docs/ML Canvas.md`)
   Apresenta o contexto de negócio, problema a ser resolvido e proposta de valor do projeto.
 
-
----
-
-## Status do Projeto
-
-* ✅ EDA e análise exploratória
-* ✅ Modelos baseline (Regressão Logística + DummyClassifier com MLflow)
-* ✅ Rede neural MLP com PyTorch
-* ✅ Pipeline sklearn reprodutível (sem data leakage)
-* ✅ API FastAPI com logging estruturado e middleware de latência
-* ✅ 29 testes automatizados (smoke, schema com Pandera, endpoints)
-* ✅ Infraestrutura: pyproject.toml, Makefile, ruff
-* ⏳ Deploy em nuvem
-
----
-
-## Próximos Passos
-
-* Deploy em ambiente cloud
-* Containerização com Docker
-* Monitoramento contínuo em produção
 
 ---
 
