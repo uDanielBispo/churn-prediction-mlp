@@ -44,7 +44,7 @@ Resposta com probabilidade de churn
 
 ## 3. Componentes do Sistema
 
-### 📁 Data Layer
+### Data Layer
 
 * `data/raw/` → dados originais (imutáveis)
 * `data/processed/` → dados tratados
@@ -53,7 +53,7 @@ Responsável por armazenar e versionar os dados utilizados no projeto.
 
 ---
 
-### ⚙️ Pipeline de Dados
+### Pipeline de Dados
 
 Arquivo: `src/pipeline.py`
 
@@ -67,7 +67,7 @@ O pipeline é salvo como artefato (`preprocessor.pkl`) e reutilizado pela API.
 
 ---
 
-### 🧾 Data Handling
+### Data Handling
 
 Arquivo: `src/dataset.py`
 
@@ -79,7 +79,7 @@ Responsável por:
 
 ---
 
-### 🤖 Model Layer
+### Model Layer
 
 Arquivos principais:
 
@@ -96,7 +96,7 @@ Responsável por:
 
 ---
 
-### 📊 Experiment Tracking
+### Experiment Tracking
 
 Ferramenta: **MLflow**
 
@@ -108,7 +108,7 @@ Responsável por:
 
 ---
 
-### 🌐 API Layer
+### API Layer
 
 Local: `src/api/`
 
@@ -128,7 +128,7 @@ Responsável por:
 
 ---
 
-### 🧪 Test Layer
+### Test Layer
 
 Local: `tests/`
 
@@ -145,7 +145,7 @@ Responsável por:
 
 ---
 
-### 🐳 Infraestrutura
+### Infraestrutura
 
 Arquivos:
 
