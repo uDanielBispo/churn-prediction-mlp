@@ -1,5 +1,7 @@
 # Architecture — Churn Prediction System
 
+---
+
 ## 1. Visão Geral
 
 Este documento descreve a arquitetura do sistema de previsão de churn, cobrindo o fluxo completo desde os dados até a inferência via API.
@@ -7,8 +9,10 @@ Este documento descreve a arquitetura do sistema de previsão de churn, cobrindo
 O projeto segue uma abordagem modular, separando claramente:
 
 * Processamento de dados
+* Pipeline de Machine Learning
 * Treinamento de modelos
 * Serviço de inferência (API)
+* Testes e validação
 
 ---
 
@@ -19,17 +23,19 @@ O pipeline do sistema pode ser representado da seguinte forma:
 ```
 Dados Brutos (data/raw)
         ↓
-Processamento de Dados (src/dataset.py)
+Dados Processados (data/processed)
         ↓
-Feature Engineering
+Pipeline de Pré-processamento (src/pipeline.py)
         ↓
-Treinamento do Modelo (src/train.py / src/train_mlp.py)
+Treinamento dos Modelos (baseline + MLP)
         ↓
-Modelo Treinado (artefato salvo)
+Modelos Treinados + Preprocessor (.pkl / .pth)
         ↓
-Serviço de Inferência (src/api/)
+API (FastAPI)
         ↓
-Endpoint /predict (FastAPI)
+Validação de Entrada (schemas)
+        ↓
+Serviço de Inferência (model_service)
         ↓
 Resposta com probabilidade de churn
 ```
@@ -40,22 +46,36 @@ Resposta com probabilidade de churn
 
 ### 📁 Data Layer
 
-* `data/raw/` → dados originais
+* `data/raw/` → dados originais (imutáveis)
 * `data/processed/` → dados tratados
 
 Responsável por armazenar e versionar os dados utilizados no projeto.
 
 ---
 
-### ⚙️ Data Processing
+### ⚙️ Pipeline de Dados
+
+Arquivo: `src/pipeline.py`
+
+Responsável por:
+
+* Padronização dos dados (StandardScaler)
+* Garantia de consistência entre treino e inferência
+* Prevenção de data leakage
+
+O pipeline é salvo como artefato (`preprocessor.pkl`) e reutilizado pela API.
+
+---
+
+### 🧾 Data Handling
 
 Arquivo: `src/dataset.py`
 
 Responsável por:
 
 * Carregamento dos dados
-* Limpeza e transformação
-* Preparação das features para treino
+* Preparação para uso em PyTorch
+* Conversão para tensores
 
 ---
 
@@ -63,27 +83,28 @@ Responsável por:
 
 Arquivos principais:
 
-* `src/model.py` → definição da arquitetura da MLP
-* `src/train.py` → treinamento de modelos baseline
+* `src/model.py` → arquitetura da MLP
+* `src/train_baselines.py` → modelos baseline (Dummy + Logística)
 * `src/train_mlp.py` → treinamento da rede neural
 * `src/early_stopping.py` → controle de overfitting
 
 Responsável por:
 
 * Treinamento dos modelos
-* Validação
+* Avaliação
 * Geração de artefatos
 
 ---
 
-### 🧠 Model Management
+### 📊 Experiment Tracking
 
-Arquivo: `src/register.py`
+Ferramenta: **MLflow**
 
 Responsável por:
 
-* Registro e armazenamento de modelos treinados
-* Gerenciamento de artefatos
+* Registro de métricas
+* Comparação entre modelos
+* Versionamento de experimentos
 
 ---
 
@@ -93,11 +114,11 @@ Local: `src/api/`
 
 Componentes:
 
-* `main.py` → inicialização da aplicação
+* `main.py` → inicialização da aplicação e middlewares
 * `routes.py` → definição dos endpoints
 * `schemas.py` → validação de entrada (Pydantic)
 * `services/model_service.py` → lógica de inferência
-* `core/loggin.py` → configuração de logs
+* `core/logger.py` → logging estruturado
 
 Responsável por:
 
@@ -107,31 +128,67 @@ Responsável por:
 
 ---
 
+### 🧪 Test Layer
+
+Local: `tests/`
+
+Componentes:
+
+* `test_smoke.py` → valida pipeline básico
+* `test_schema.py` → valida estrutura dos dados
+* `test_api.py` → valida endpoints da API
+
+Responsável por:
+
+* Garantir integridade do sistema
+* Evitar regressões
+
+---
+
+### 🐳 Infraestrutura
+
+Arquivos:
+
+* `Dockerfile`
+* `docker-compose.yml`
+* `Makefile`
+* `pyproject.toml`
+
+Responsável por:
+
+* Padronizar execução
+* Facilitar deploy
+* Automatizar tarefas
+
+---
+
 ## 4. Comunicação entre Componentes
 
-* O modelo treinado é salvo e posteriormente carregado pela API
-* A API utiliza o `model_service` para realizar inferência
-* As entradas são validadas via `schemas.py` antes do processamento
+* O pipeline é utilizado tanto no treinamento quanto na inferência
+* O modelo treinado é salvo e carregado pela API
+* A API utiliza o `model_service` para realizar predições
+* Os dados de entrada são validados via `schemas.py`
 
 ---
 
 ## 5. Padrões de Projeto Utilizados
 
-* Separação de responsabilidades (data, model, API)
+* Separação de responsabilidades
 * Arquitetura modular
 * Service Layer na API
-* Uso de schemas para validação de dados
+* Validação de dados com schemas (Pydantic)
+* Pipeline reutilizável (treino e inferência)
 
 ---
 
-## 6. Escalabilidade (Futuro)
+## 6. Escalabilidade
 
-Possíveis melhorias:
+O sistema foi projetado para permitir evolução futura:
 
 * Deploy em ambiente cloud
-* Containerização com Docker
-* Orquestração de pipelines
-* Integração com MLflow
+* Containerização com Docker (já implementado)
+* Monitoramento contínuo
+* Integração com pipelines automatizados
 
 ---
 
@@ -139,8 +196,9 @@ Possíveis melhorias:
 
 A arquitetura foi projetada para:
 
+* Garantir reprodutibilidade
 * Facilitar manutenção
-* Permitir reprodutibilidade
-* Suportar evolução para produção real
+* Separar claramente treino e produção
+* Permitir evolução para um sistema real em produção
 
 ---
