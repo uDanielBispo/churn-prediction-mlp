@@ -134,6 +134,33 @@ Arquivo: `.github/workflows/ci-cd.yml`
 | `docker-compose.prod.yml` | VPS em produção (api + mlflow persistente) |
 | `Dockerfile` | Imagem base usada por ambos os composes |
 
+### Diagrama da VPS em produção
+
+```mermaid
+graph TD
+    Internet((Internet))
+    GHA[GitHub Actions]
+
+    subgraph VPS
+        subgraph Rede interna Docker
+            API["🟢 api\nFastAPI — porta 8000\n(restart: unless-stopped)"]
+            MLflow["🟣 mlflow\nMLflow Server — porta 5000\n(restart: unless-stopped)"]
+            Train["🟡 train\nContainer efêmero\n(docker compose run --rm)"]
+        end
+        Volume[("💾 mlflow-data/\nSQLite + artefatos\n(volume persistente)")]
+    end
+
+    Internet -->|"HTTP :8000\n/predict, /health"| API
+    GHA -->|"SSH\ngit pull + docker compose"| VPS
+
+    Train -->|"treina modelos\nMLFLOW_TRACKING_URI=http://mlflow:5000"| MLflow
+    Train -->|"registra no Registry\npython -m src.register_models"| MLflow
+    API -->|"carrega modelos do Registry\nmlflow-artifacts:// via HTTP"| MLflow
+    MLflow <-->|"persiste experimentos\ne artefatos"| Volume
+```
+
+> O container `train` é criado pelo pipeline CI/CD, executa o treino e o registro, e é removido automaticamente (`--rm`). Os containers `api` e `mlflow` ficam permanentemente em execução com `restart: unless-stopped`.
+
 ---
 
 ## 5. Padrões de Projeto Utilizados
