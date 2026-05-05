@@ -75,18 +75,33 @@ jobs:
           # Isso garante que o deploy não acontece se o treino ou o registro falharem.
           script: |
             set -e
-            cd ${{ secrets.VPS_PROJECT_PATH }}
+            PROJECT_PATH="${{ secrets.VPS_PROJECT_PATH }}"
+            REPO_URL="${{ github.server_url }}/${{ github.repository }}.git"
 
-            echo "--- Atualizando código ---"
+            echo "--- Verificando repositório ---"
+            # Clona o repositório na primeira execução; nas seguintes, apenas atualiza.
+            if [ ! -d "$PROJECT_PATH/.git" ]; then
+              echo "Repositório não encontrado. Clonando..."
+              git clone "$REPO_URL" "$PROJECT_PATH"
+            fi
+            cd "$PROJECT_PATH"
             git pull origin main
 
-            echo "--- Atualizando dependências ---"
+            echo "--- Verificando ambiente virtual ---"
+            # Cria o .venv na primeira execução; nas seguintes, apenas ativa.
+            if [ ! -d ".venv" ]; then
+              echo "Ambiente virtual não encontrado. Criando..."
+              python3.11 -m venv .venv
+            fi
             source .venv/bin/activate
             pip install -e ".[dev]" --quiet
 
+            echo "--- Iniciando MLflow (se não estiver rodando) ---"
+            # up -d é idempotente: não reinicia um container já em execução.
+            docker compose -f docker-compose.prod.yml up -d mlflow
+
             echo "--- Treinando modelos ---"
-            # MLFLOW_TRACKING_URI aponta para o servidor MLflow que já está
-            # rodando na VPS via docker-compose.prod.yml.
+            # MLFLOW_TRACKING_URI aponta para o servidor MLflow rodando na VPS.
             MLFLOW_TRACKING_URI=http://localhost:5000 make train
 
             echo "--- Registrando modelos no MLflow Registry ---"
@@ -95,7 +110,6 @@ jobs:
             echo "--- Fazendo deploy da API ---"
             # --build reconstrói a imagem com o código atualizado.
             # -d roda em background (detached).
-            # Apenas o serviço 'api' é reconstruído — o mlflow continua rodando.
             docker compose -f docker-compose.prod.yml up --build -d api
 
             echo "--- Deploy concluído ---"
