@@ -20,13 +20,14 @@ services:
     # --allowed-hosts: permite requisições com Host "mlflow" (nome do serviço Docker).
     # O MLflow 2.10+ rejeita por padrão qualquer host que não seja localhost/127.0.0.1.
     # Seguro porque a porta não está exposta publicamente.
-    # --serve-artifacts: o servidor passa a servir artefatos via HTTP.
-    # Sem essa flag, o MLflow diz ao cliente o caminho local do artefato (ex:
-    # file:///mlflow/artifacts/...) e o cliente tenta acessar diretamente — o que
-    # falha no container da API, que não tem esse volume montado.
+    # --serve-artifacts + --artifacts-destination: o servidor armazena os artefatos
+    # em /mlflow/artifacts e os entrega via HTTP usando o esquema mlflow-artifacts://.
+    # Importante NÃO usar --default-artifact-root aqui: ele sobrescreve o proxy e
+    # faz com que o MLflow grave a URI como file:///mlflow/artifacts/..., o que
+    # quebra a API (ela não tem esse volume montado e tentaria abrir o caminho local).
     # --allowed-hosts inclui "mlflow:5000" porque o header HTTP enviado pelos containers
     # inclui a porta (ex: "Host: mlflow:5000"), e o middleware faz match exato.
-    command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000 --serve-artifacts --allowed-hosts mlflow,mlflow:5000,localhost,localhost:5000,127.0.0.1,127.0.0.1:5000
+    command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --artifacts-destination /mlflow/artifacts --host 0.0.0.0 --port 5000 --serve-artifacts --allowed-hosts mlflow,mlflow:5000,localhost,localhost:5000,127.0.0.1,127.0.0.1:5000
     healthcheck:
       # /health só retorna 200 após os workers do Uvicorn estarem prontos (~13s).
       # start_period: 30s garante que o container não é marcado healthy antes disso,
