@@ -23,6 +23,14 @@ services:
       - MLFLOW_ALLOWED_HOSTS=mlflow,localhost,127.0.0.1
     # mlflow server cria o schema do banco automaticamente na primeira execução.
     command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000
+    healthcheck:
+      # Verifica se o servidor MLflow está pronto para aceitar requisições.
+      # Os serviços train e api aguardam esse healthcheck antes de iniciar.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
     restart: unless-stopped
 
   train:
@@ -31,7 +39,8 @@ services:
       # Aponta para o container mlflow na rede interna do Docker.
       - MLFLOW_TRACKING_URI=http://mlflow:5000
     depends_on:
-      - mlflow
+      mlflow:
+        condition: service_healthy
     command: make train
 
   api:
@@ -45,5 +54,6 @@ services:
       # dentro da rede interna do compose.
       - MLFLOW_TRACKING_URI=http://mlflow:5000
     depends_on:
-      - mlflow
+      mlflow:
+        condition: service_healthy
     restart: unless-stopped
