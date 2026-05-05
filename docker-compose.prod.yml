@@ -20,7 +20,9 @@ services:
     # --allowed-hosts: permite requisições com Host "mlflow" (nome do serviço Docker).
     # O MLflow 2.10+ rejeita por padrão qualquer host que não seja localhost/127.0.0.1.
     # Seguro porque a porta não está exposta publicamente.
-    command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000 --allowed-hosts mlflow,localhost,127.0.0.1
+    # --allowed-hosts inclui "mlflow:5000" porque o header HTTP enviado pelos containers
+    # inclui a porta (ex: "Host: mlflow:5000"), e o middleware faz match exato.
+    command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000 --allowed-hosts mlflow,mlflow:5000,localhost,127.0.0.1
     healthcheck:
       # Verifica se o servidor MLflow está pronto para aceitar requisições.
       # Os serviços train e api aguardam esse healthcheck antes de iniciar.
