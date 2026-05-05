@@ -97,6 +97,13 @@ jobs:
             # up -d é idempotente: não reinicia um container já em execução.
             docker compose -f docker-compose.prod.yml up -d mlflow
 
+            echo "--- Parando API antiga para liberar RAM durante o treino ---"
+            # A VPS tem RAM limitada e o treino da MLP carrega PyTorch (~1GB).
+            # Se a API antiga ficar rodando — especialmente em loop de restart
+            # quando o Registry ainda está vazio — o OOM killer mata o treino.
+            # "|| true" para não falhar o pipeline se o container ainda não existir.
+            docker compose -f docker-compose.prod.yml stop api || true
+
             echo "--- Treinando modelos ---"
             # O container train se comunica com o mlflow pela rede interna do Docker.
             # --rm remove o container após a execução.
