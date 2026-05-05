@@ -71,6 +71,8 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          # O treino da MLP pode levar vários minutos; aumentamos o timeout para 30m.
+          command_timeout: 30m
           # set -e: interrompe o script imediatamente se qualquer comando falhar.
           # Isso garante que o deploy não acontece se o treino ou o registro falharem.
           script: |
