@@ -10,14 +10,17 @@
 services:
   mlflow:
     build: .
-    ports:
-      - "5000:5000"
+    # Sem exposição de porta: o MLflow é acessível apenas dentro da rede Docker.
+    # Os containers train e api se comunicam via http://mlflow:5000 internamente.
     volumes:
       # Persiste o banco de dados e os artefatos no disco da VPS.
       # Mesmo que o container seja recriado, o histórico de experimentos é mantido.
       - ./mlflow-data:/mlflow
     # mlflow server cria o schema do banco automaticamente na primeira execução.
-    command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000
+    # --allowed-hosts: necessário para o MLflow 2.10+ aceitar requisições com
+    # Host "mlflow" (nome do serviço Docker na rede interna). Seguro porque a
+    # porta não está exposta publicamente.
+    command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000 --allowed-hosts mlflow,localhost,127.0.0.1
     restart: unless-stopped
 
   train:
