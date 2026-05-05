@@ -17,7 +17,7 @@ services:
     # se quiser deixar acessível publicamente, trocar por "5000:5000" e configurar firewall para permitir acesso apenas à porta 5000.
     # Os containers train e api continuam usando http://mlflow:5000 pela rede Docker.
     ports:
-      - "127.0.0.1:5000:5000"
+      - "5000:5000"
     volumes:
       # Persiste o banco de dados e os artefatos no disco da VPS.
       # Mesmo que o container seja recriado, o histórico de experimentos é mantido.
