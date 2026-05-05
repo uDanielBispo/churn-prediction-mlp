@@ -14,6 +14,7 @@ services:
     # Para ver a UI, abrir um túnel SSH a partir da máquina local:
     #   ssh -L 5000:localhost:5000 <user>@<vps-host>
     # e depois acessar http://localhost:5000 no navegador.
+    # se quiser deixar acessível publicamente, trocar por "5000:5000" e configurar firewall para permitir acesso apenas à porta 5000.
     # Os containers train e api continuam usando http://mlflow:5000 pela rede Docker.
     ports:
       - "127.0.0.1:5000:5000"
