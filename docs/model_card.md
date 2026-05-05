@@ -1,5 +1,7 @@
 # Model Card — Churn Prediction (MLP)
 
+---
+
 ## 1. Visão Geral
 
 Este modelo tem como objetivo prever a probabilidade de churn (cancelamento) de clientes em uma empresa de telecomunicações.
@@ -13,6 +15,7 @@ Este modelo tem como objetivo prever a probabilidade de churn (cancelamento) de 
 * Priorização de clientes para campanhas de retenção
 * Redução do churn rate
 * Otimização de custos de marketing
+* Suporte à tomada de decisão em CRM
 
 ---
 
@@ -20,7 +23,7 @@ Este modelo tem como objetivo prever a probabilidade de churn (cancelamento) de 
 
 * **Dataset:** Telco Customer Churn
 * **Tipo:** Dados tabulares
-* **Volume:** Dataset com milhares de registros de clientes
+* **Volume:** ~7.000 registros de clientes
 
 ### Tipos de variáveis:
 
@@ -41,24 +44,30 @@ Este modelo tem como objetivo prever a probabilidade de churn (cancelamento) de 
 
 * Encoding de variáveis categóricas (one-hot encoding)
 * Seleção de 25 features relevantes
-* Tratamento de valores ausentes (quando aplicável)
+* Padronização com **StandardScaler**
+* Pipeline centralizado em `src/pipeline.py`
 
 ### Considerações importantes:
 
-* Possível desbalanceamento entre classes (churn vs não churn)
-* Exclusão de variáveis com risco de data leakage
+* O dataset apresenta **desbalanceamento de classes**
+* Foi adotado pipeline para evitar **data leakage**
+* Separação clara entre:
+
+  * `data/raw/` → dados originais
+  * `data/processed/` → dados tratados
 
 ---
 
 ## 3. Metodologia e Modelagem
 
-### Pipeline:
+### Pipeline de Machine Learning:
 
 1. Análise exploratória dos dados (EDA)
 2. Feature engineering
 3. Treinamento de modelos baseline
 4. Treinamento de rede neural (MLP)
 5. Avaliação e comparação
+6. Deploy via API
 
 ### Modelos utilizados:
 
@@ -71,10 +80,25 @@ Este modelo tem como objetivo prever a probabilidade de churn (cancelamento) de 
 * Arquitetura definida em `src/model.py`
 * Treinamento via `src/train_mlp.py`
 * Early stopping para evitar overfitting
+* Salvamento de pesos (`.pth`) e modelo final (`.pkl`)
+
+### Pipeline de Dados:
+
+* Implementado em `src/pipeline.py`
+* Reutilizado em treino e inferência
+* Garante consistência e reprodutibilidade
+
+### Rastreamento de Experimentos:
+
+* Uso de **MLflow** para:
+
+  * registro de métricas
+  * comparação entre modelos
+  * versionamento de execuções
 
 ### Divisão dos dados:
 
-* Treino / validação / teste *(ajustável no pipeline)*
+* Treino / validação / teste (configurável)
 
 ---
 
@@ -87,14 +111,14 @@ Os modelos são avaliados utilizando:
 * Recall
 * F1-Score
 
-### Considerações:
+### Estratégia de avaliação:
 
-* O problema de churn prioriza **Recall**, pois:
+* Priorização de **Recall**, pois:
 
-  * É mais crítico identificar clientes que irão cancelar
-* Falsos positivos são aceitáveis dentro de limites operacionais
+  * é mais importante identificar clientes que irão churnar
+* Aceita-se aumento de falsos positivos dentro de limites operacionais
 
-> Os valores específicos das métricas devem ser atualizados conforme experimentos finais.
+> As métricas são registradas via MLflow e podem ser comparadas entre execuções.
 
 ---
 
@@ -107,55 +131,84 @@ Com base na análise exploratória e features selecionadas:
 * Baixo tempo de relacionamento
 * Contratos mensais (vs contratos longos)
 * Ausência de serviços adicionais (ex: suporte técnico)
-* Métodos de pagamento específicos (ex: electronic check)
+* Uso de internet fibra
+* Métodos de pagamento como *electronic check*
 
-> A interpretação pode ser aprofundada com técnicas como feature importance ou SHAP (não implementado nesta versão).
+### Observação:
+
+* Modelos lineares (Logística) oferecem maior interpretabilidade
+* MLP apresenta maior capacidade de modelar relações complexas, porém com menor interpretabilidade
+
+> Técnicas como SHAP não foram implementadas nesta versão.
 
 ---
 
 ## 6. Limitações e Riscos
 
-* O modelo é baseado em dados históricos e pode não refletir mudanças futuras
-* Possível presença de variáveis correlacionadas
-* Não considera fatores externos (ex: concorrência, mercado)
-* MLP pode ter menor interpretabilidade comparado a modelos lineares
+* Modelo baseado em dados históricos (pode não refletir mudanças futuras)
+* Possível correlação entre variáveis
+* Não considera fatores externos (mercado, concorrência)
+* Dependência da qualidade dos dados de entrada
+* MLP possui menor interpretabilidade
 
 ---
 
 ## 7. Fairness e Viés
 
-* Não foram identificadas variáveis sensíveis explícitas (ex: raça, gênero)
-* Avaliações de fairness não foram realizadas nesta versão
+* Não foram utilizadas variáveis sensíveis explícitas
+* Avaliações formais de fairness não foram realizadas
 
-> Recomenda-se análise futura caso o modelo seja aplicado em produção real.
+> Caso aplicado em produção real, recomenda-se avaliação de viés.
 
 ---
 
 ## 8. Deploy e Uso em Produção
 
-O modelo foi preparado para uso via API utilizando FastAPI.
+O modelo está disponível via API utilizando **FastAPI**.
 
 ### Arquitetura:
 
 * API definida em `src/api/`
-* Endpoint principal:
+* Separação em camadas:
 
-  * `POST /predict` → retorna previsão de churn
+  * rotas
+  * schemas (validação)
+  * serviços (lógica de modelo)
 
-### Uso esperado:
+### Endpoint principal:
 
-* Integração com sistemas de CRM
-* Execução em batch ou near real-time
+* `POST /predict` → retorna previsão de churn
+
+### Características:
+
+* Suporte a múltiplos modelos:
+
+  * `mlp`
+  * `logistic`
+  * `dummy`
+* Validação de entrada com Pydantic
+* Logging estruturado
+* Middleware de latência
+
+### Execução:
+
+* Local (uvicorn)
+* Containerizada via Docker
 
 ---
 
 ## 9. Monitoramento
 
-Para uso em produção, recomenda-se monitorar:
+A estratégia de monitoramento considera:
 
-* Performance do modelo (AUC, Recall)
+* Performance do modelo (AUC, Recall, F1)
 * Data drift nas features
-* Taxa de churn ao longo do tempo
+* Distribuição das variáveis ao longo do tempo
+
+### Boas práticas adotadas:
+
+* Logs estruturados na API
+* Testes automatizados garantindo integridade
 
 ### Ações recomendadas:
 
@@ -168,16 +221,32 @@ Para uso em produção, recomenda-se monitorar:
 
 O projeto foi estruturado para garantir reprodutibilidade:
 
+* Pipeline centralizado (`pipeline.py`)
 * Código modular em `src/`
-* Notebooks para experimentação
-* API desacoplada para inferência
+* MLflow para tracking de experimentos
+* Testes automatizados (`tests/`)
 
 ### Execução:
 
-* Treinamento: `python src/train_mlp.py`
-* API: `uvicorn src.api.main:app --reload`
+* Treinamento:
 
-Dependências disponíveis em `requirements.txt`.
+```bash
+python -m src.train_mlp
+```
+
+* API:
+
+```bash
+uvicorn src.api.main:app --reload
+```
+
+* Docker:
+
+```bash
+docker-compose up
+```
+
+Dependências gerenciadas via `pyproject.toml`.
 
 ---
 
@@ -189,11 +258,10 @@ O modelo permite:
 * Priorizar ações de retenção
 * Reduzir perdas de receita
 
-Exemplo de uso:
+### Exemplo de uso:
 
 * Selecionar os **top 10% clientes com maior risco**
 * Direcionar campanhas específicas
-
 
 ---
 
@@ -201,40 +269,19 @@ Exemplo de uso:
 
 Projeto desenvolvido em grupo como parte de desafio acadêmico de Machine Learning.
 
+---
+
 ## 13. Features Selecionadas
 
-| Coluna (Source) | Descrição | Foi usada no final? | Justificativa |
-|----------------|----------|----------------------|---------------|
-| CustomerID | Identificador único do cliente | Não | ID sem valor preditivo, causa overfitting |
-| Count | Valor constante (1) | Não | Sem variância, não agrega informação |
-| Country | País do cliente | Não | Sem variância |
-| State | Estado | Não | Baixa relevância |
-| City | Cidade | Não | Alta cardinalidade |
-| Zip Code | Código postal | Não | Baixo valor preditivo |
-| Lat Long | Coordenadas combinadas | Não | Redundante |
-| Latitude | Coordenada geográfica | Não | Baixa relevância |
-| Longitude | Coordenada geográfica | Não | Baixa relevância |
-| Gender | Gênero | Sim | Pode influenciar comportamento |
-| Senior Citizen | Idoso | Não | Baixa relevância |
-| Partner | Possui parceiro | Sim | Indica estabilidade |
-| Dependents | Dependentes | Sim | Relacionado à retenção |
-| Tenure Months | Tempo como cliente | Sim | Muito importante |
-| Phone Service | Serviço telefônico | Sim | Uso de serviço |
-| Multiple Lines | Múltiplas linhas | Sim | Engajamento |
-| Internet Service | Tipo de internet | Sim | Impacta churn |
-| Online Security | Segurança | Sim | Reduz churn |
-| Online Backup | Backup | Sim | Uso do serviço |
-| Device Protection | Proteção | Sim | Retenção |
-| Tech Support | Suporte | Sim | Muito relevante |
-| Streaming TV | Streaming TV | Sim | Comportamento |
-| Streaming Movies | Streaming filmes | Sim | Comportamento |
-| Contract | Tipo de contrato | Sim | Muito relevante |
-| Paperless Billing | Fatura digital | Sim | Perfil cliente |
-| Payment Method | Método pagamento | Sim | Impacta churn |
-| Monthly Charges | Valor mensal | Sim | Influencia cancelamento |
-| Total Charges | Total gasto | Não | Redundante |
-| Churn Label | Label textual | Não | Redundante |
-| Churn Value | Target | Sim | Variável alvo |
-| Churn Score | Score churn | Não | Data leakage |
-| CLTV | Lifetime value | Não | Data leakage |
-| Churn Reason | Motivo churn | Não | Data leakage |
+As features foram selecionadas com base em relevância estatística e impacto no comportamento de churn.
+
+### Critérios de exclusão:
+
+* Baixa variância
+* Alta cardinalidade
+* Redundância
+* Risco de data leakage
+
+### Observação importante:
+
+Variáveis como `Churn Score`, `CLTV` e `Churn Reason` foram **excluídas** por representarem **data leakage**, garantindo que o modelo utilize apenas informações disponíveis no momento da predição.
