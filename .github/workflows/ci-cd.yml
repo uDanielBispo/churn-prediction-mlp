@@ -1,0 +1,101 @@
+# ci-cd.yml — Pipeline de integração e entrega contínua.
+#
+# Dois jobs:
+#   ci:     roda em todo PR e push — valida lint e testes.
+#   deploy: roda apenas no merge à main — treina, registra e faz deploy na VPS.
+#
+# Segredos necessários (configurar em Settings → Secrets do repositório):
+#   VPS_HOST         → IP ou hostname da VPS
+#   VPS_USER         → usuário SSH (ex: ubuntu, rafael)
+#   VPS_SSH_KEY      → chave privada SSH (conteúdo do arquivo ~/.ssh/id_rsa)
+#   VPS_PROJECT_PATH → caminho do projeto na VPS (ex: /home/rafael/churn-prediction-mlp)
+
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Integração Contínua
+  # Roda em todo PR e push para garantir que o código está correto antes do merge.
+  # ---------------------------------------------------------------------------
+  ci:
+    name: Lint e Testes
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          # O cache é baseado no hash do pyproject.toml.
+          # Enquanto as dependências não mudarem, o pip reutiliza o cache
+          # da execução anterior em vez de baixar tudo novamente.
+          cache: 'pip'
+          cache-dependency-path: 'pyproject.toml'
+
+      - name: Instalar dependências
+        run: pip install -e ".[dev]"
+
+      - name: Lint (ruff)
+        run: ruff check src/ tests/
+
+      - name: Testes (pytest)
+        # test_smoke.py e test_schema.py pulam automaticamente se o CSV não existir.
+        # test_api.py sempre roda pois usa mocks e não depende de dados ou modelos.
+        run: pytest tests/ -v
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Deploy
+  # Roda apenas quando há push direto na main (ou seja, após um PR ser aprovado
+  # e mergeado). Depende do job ci — se os testes falharem, o deploy não acontece.
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Treino, Registro e Deploy
+    needs: ci
+    # Condição dupla: só roda em push (não em PR) e somente na branch main.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Executar pipeline na VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          # set -e: interrompe o script imediatamente se qualquer comando falhar.
+          # Isso garante que o deploy não acontece se o treino ou o registro falharem.
+          script: |
+            set -e
+            cd ${{ secrets.VPS_PROJECT_PATH }}
+
+            echo "--- Atualizando código ---"
+            git pull origin main
+
+            echo "--- Atualizando dependências ---"
+            source .venv/bin/activate
+            pip install -e ".[dev]" --quiet
+
+            echo "--- Treinando modelos ---"
+            # MLFLOW_TRACKING_URI aponta para o servidor MLflow que já está
+            # rodando na VPS via docker-compose.prod.yml.
+            MLFLOW_TRACKING_URI=http://localhost:5000 make train
+
+            echo "--- Registrando modelos no MLflow Registry ---"
+            MLFLOW_TRACKING_URI=http://localhost:5000 python -m src.register_models
+
+            echo "--- Fazendo deploy da API ---"
+            # --build reconstrói a imagem com o código atualizado.
+            # -d roda em background (detached).
+            # Apenas o serviço 'api' é reconstruído — o mlflow continua rodando.
+            docker compose -f docker-compose.prod.yml up --build -d api
+
+            echo "--- Deploy concluído ---"

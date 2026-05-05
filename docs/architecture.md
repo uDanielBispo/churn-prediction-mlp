@@ -1,7 +1,5 @@
 # Architecture — Churn Prediction System
 
----
-
 ## 1. Visão Geral
 
 Este documento descreve a arquitetura do sistema de previsão de churn, cobrindo o fluxo completo desde os dados até a inferência via API.
@@ -9,35 +7,47 @@ Este documento descreve a arquitetura do sistema de previsão de churn, cobrindo
 O projeto segue uma abordagem modular, separando claramente:
 
 * Processamento de dados
-* Pipeline de Machine Learning
 * Treinamento de modelos
+* Registro e promoção de modelos
 * Serviço de inferência (API)
-* Testes e validação
+* Pipeline CI/CD
 
 ---
 
 ## 2. Fluxo do Sistema
 
-O pipeline do sistema pode ser representado da seguinte forma:
+### Ambiente local
 
 ```
 Dados Brutos (data/raw)
         ↓
 Dados Processados (data/processed)
         ↓
-Pipeline de Pré-processamento (src/pipeline.py)
+Treinamento (make train)
+  ├── train_baselines.py → Logística + Dummy
+  └── train_mlp.py       → MLP + Preprocessor
         ↓
-Treinamento dos Modelos (baseline + MLP)
+MLflow local (mlflow.db + mlruns/)
         ↓
-Modelos Treinados + Preprocessor (.pkl / .pth)
+Serviço de Inferência (src/api/)
         ↓
-API (FastAPI)
+Endpoint /predict — lê .pkl de src/models/
+```
+
+### Ambiente de produção (VPS)
+
+```
+git push → merge na main
         ↓
-Validação de Entrada (schemas)
+GitHub Actions
+  ├── lint + testes
+  ├── make train       → loga no MLflow da VPS
+  ├── make register    → promove no MLflow Registry se melhor
+  └── docker compose   → reinicia container da API
         ↓
-Serviço de Inferência (model_service)
+API FastAPI (porta 8000)
         ↓
-Resposta com probabilidade de churn
+Endpoint /predict — carrega modelos do MLflow Registry
 ```
 
 ---
@@ -46,65 +56,38 @@ Resposta com probabilidade de churn
 
 ### Data Layer
 
-* `data/raw/` → dados originais (imutáveis)
-* `data/processed/` → dados tratados
-
-Responsável por armazenar e versionar os dados utilizados no projeto.
-
----
-
-### Pipeline de Dados
-
-Arquivo: `src/pipeline.py`
-
-Responsável por:
-
-* Padronização dos dados (StandardScaler)
-* Garantia de consistência entre treino e inferência
-* Prevenção de data leakage
-
-O pipeline é salvo como artefato (`preprocessor.pkl`) e reutilizado pela API.
-
----
-
-### Data Handling
-
-Arquivo: `src/dataset.py`
-
-Responsável por:
-
-* Carregamento dos dados
-* Preparação para uso em PyTorch
-* Conversão para tensores
+* `data/raw/` → dados originais
+* `data/processed/` → dados tratados e prontos para modelagem
 
 ---
 
 ### Model Layer
 
-Arquivos principais:
-
-* `src/model.py` → arquitetura da MLP
-* `src/train_baselines.py` → modelos baseline (Dummy + Logística)
-* `src/train_mlp.py` → treinamento da rede neural
-* `src/early_stopping.py` → controle de overfitting
-
-Responsável por:
-
-* Treinamento dos modelos
-* Avaliação
-* Geração de artefatos
+| Arquivo | Responsabilidade |
+|---|---|
+| `src/model.py` | Arquitetura da rede neural MLP (ChurnMLP) |
+| `src/train_baselines.py` | Treina Logística e Dummy; loga no MLflow |
+| `src/train_mlp.py` | Treina a MLP e o preprocessor; loga no MLflow |
+| `src/early_stopping.py` | Interrompe o treino quando a validação para de melhorar |
+| `src/pipeline.py` | ColumnTransformer com StandardScaler (sem data leakage) |
+| `src/utils.py` | Utilitários: `set_seed`, `find_best_threshold`, `setup_mlflow` |
 
 ---
 
-### Experiment Tracking
+### Model Management
 
-Ferramenta: **MLflow**
+| Arquivo | Responsabilidade |
+|---|---|
+| `src/register_models.py` | Compara métricas com a versão em Production e promove no MLflow Registry se melhor |
 
-Responsável por:
+Nomes dos modelos no MLflow Registry:
 
-* Registro de métricas
-* Comparação entre modelos
-* Versionamento de experimentos
+| Nome no Registry | Modelo |
+|---|---|
+| `ChurnLogistic` | Regressão Logística |
+| `ChurnDummy` | DummyClassifier |
+| `ChurnMLP` | Rede neural MLP PyTorch |
+| `ChurnPreprocessor` | StandardScaler (versionado junto com a MLP) |
 
 ---
 
@@ -112,93 +95,61 @@ Responsável por:
 
 Local: `src/api/`
 
-Componentes:
-
-* `main.py` → inicialização da aplicação e middlewares
-* `routes.py` → definição dos endpoints
-* `schemas.py` → validação de entrada (Pydantic)
-* `services/model_service.py` → lógica de inferência
-* `core/logger.py` → logging estruturado
-
 Responsável por:
 
 * Servir o modelo em produção
 * Receber requisições externas
 * Retornar previsões
 
----
+| Arquivo | Responsabilidade |
+|---|---|
+| `main.py` | Inicialização do FastAPI e middleware de latência |
+| `routes.py` | Endpoints: `GET /health`, `POST /predict` |
+| `schemas.py` | Validação de entrada com Pydantic (CustomerData) |
+| `services/model_service.py` | Carrega modelos e executa inferência |
+| `core/logger.py` | Logger estruturado (timestamp \| nível \| módulo) |
 
-### Test Layer
-
-Local: `tests/`
-
-Componentes:
-
-* `test_smoke.py` → valida pipeline básico
-* `test_schema.py` → valida estrutura dos dados
-* `test_api.py` → valida endpoints da API
-
-Responsável por:
-
-* Garantir integridade do sistema
-* Evitar regressões
+O `model_service.py` alterna o comportamento pela variável `ENVIRONMENT`:
+* `local` (padrão) → carrega `.pkl` do disco
+* `production` → carrega do MLflow Registry via `MLFLOW_TRACKING_URI`
 
 ---
 
-### Infraestrutura
+### CI/CD Layer
 
-Arquivos:
+Arquivo: `.github/workflows/ci-cd.yml`
 
-* `Dockerfile`
-* `docker-compose.yml`
-* `Makefile`
-* `pyproject.toml`
-
-Responsável por:
-
-* Padronizar execução
-* Facilitar deploy
-* Automatizar tarefas
+| Job | Quando roda | O que faz |
+|---|---|---|
+| `ci` | Todo PR e push | lint (ruff) + testes (pytest) |
+| `deploy` | Merge na main | SSH na VPS → treino → registro → restart da API |
 
 ---
 
-## 4. Comunicação entre Componentes
+## 4. Infraestrutura Docker
 
-* O pipeline é utilizado tanto no treinamento quanto na inferência
-* O modelo treinado é salvo e carregado pela API
-* A API utiliza o `model_service` para realizar predições
-* Os dados de entrada são validados via `schemas.py`
+| Arquivo | Uso |
+|---|---|
+| `docker-compose.yml` | Desenvolvimento local (api + mlflow + train) |
+| `docker-compose.prod.yml` | VPS em produção (api + mlflow persistente) |
+| `Dockerfile` | Imagem base usada por ambos os composes |
 
 ---
 
 ## 5. Padrões de Projeto Utilizados
 
-* Separação de responsabilidades
-* Arquitetura modular
-* Service Layer na API
-* Validação de dados com schemas (Pydantic)
-* Pipeline reutilizável (treino e inferência)
+* **Separação de responsabilidades** — data, model, registry, API e CI/CD em camadas distintas
+* **Extract Function** — `train_mlp.py` dividido em 7 funções com responsabilidade única
+* **Extract Module** — `set_seed`, `find_best_threshold` e `setup_mlflow` em `utils.py`
+* **Service Layer** — `model_service.py` isola a lógica de inferência das rotas
+* **Environment-based configuration** — variável `ENVIRONMENT` define comportamento local vs produção
 
 ---
 
-## 6. Escalabilidade
-
-O sistema foi projetado para permitir evolução futura:
-
-* Deploy em ambiente cloud
-* Containerização com Docker (já implementado)
-* Monitoramento contínuo
-* Integração com pipelines automatizados
-
----
-
-## 7. Considerações Finais
+## 6. Considerações Finais
 
 A arquitetura foi projetada para:
 
-* Garantir reprodutibilidade
-* Facilitar manutenção
-* Separar claramente treino e produção
-* Permitir evolução para um sistema real em produção
-
----
+* Facilitar manutenção e evolução do código
+* Garantir reprodutibilidade via seeds fixas e pipeline sklearn
+* Suportar operação em produção real com MLflow Registry e CI/CD automatizado
