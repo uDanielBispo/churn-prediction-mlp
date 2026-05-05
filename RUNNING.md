@@ -59,23 +59,31 @@ Executar a solução de churn de ponta a ponta em um ambiente isolado:
 
 ## Ambiente de produção (VPS)
 
-Usa `docker-compose.prod.yml`, que não inclui o serviço de treino — o treino acontece
-automaticamente no pipeline CI/CD do GitHub Actions a cada merge na branch `main`.
+Usa `docker-compose.prod.yml`. A VPS só precisa ter **Docker e git** instalados —
+todo o restante (Python, dependências, treino) roda dentro de containers.
 
 ### Primeira configuração na VPS
 
-Execute estes passos uma única vez ao configurar a VPS:
+A primeira execução do pipeline CI/CD já cuida de tudo automaticamente:
+clona o repositório, sobe o MLflow, treina os modelos e faz o deploy da API.
+
+Caso queira executar manualmente antes do primeiro merge na `main`:
 
 ```bash
-# 1. Subir o MLflow persistente
+# 1. Clonar o repositório
+git clone https://github.com/uDanielBispo/churn-prediction-mlp.git
+cd churn-prediction-mlp
+
+# 2. Subir o MLflow persistente
 docker compose -f docker-compose.prod.yml up -d mlflow
 
-# 2. Treinar os modelos e registrar no MLflow Registry
-source .venv/bin/activate
-MLFLOW_TRACKING_URI=http://localhost:5000 make train
-MLFLOW_TRACKING_URI=http://localhost:5000 make register
+# 3. Treinar os modelos e registrar no MLflow Registry (via Docker)
+docker compose -f docker-compose.prod.yml run --rm train
+docker compose -f docker-compose.prod.yml run --rm \
+  -e MLFLOW_TRACKING_URI=http://mlflow:5000 \
+  train python -m src.register_models
 
-# 3. Subir a API (carrega os modelos do MLflow Registry)
+# 4. Subir a API (carrega os modelos do MLflow Registry)
 docker compose -f docker-compose.prod.yml up -d api
 ```
 

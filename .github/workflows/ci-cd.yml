@@ -87,25 +87,20 @@ jobs:
             cd "$PROJECT_PATH"
             git pull origin main
 
-            echo "--- Verificando ambiente virtual ---"
-            # Cria o .venv na primeira execução; nas seguintes, apenas ativa.
-            if [ ! -d ".venv" ]; then
-              echo "Ambiente virtual não encontrado. Criando..."
-              python3.11 -m venv .venv
-            fi
-            source .venv/bin/activate
-            pip install -e ".[dev]" --quiet
-
             echo "--- Iniciando MLflow (se não estiver rodando) ---"
             # up -d é idempotente: não reinicia um container já em execução.
-            docker compose -f docker-compose.prod.yml up -d mlflow
+            docker compose -f docker-compose.prod.yml up -d --build mlflow
 
             echo "--- Treinando modelos ---"
-            # MLFLOW_TRACKING_URI aponta para o servidor MLflow rodando na VPS.
-            MLFLOW_TRACKING_URI=http://localhost:5000 make train
+            # O container train se comunica com o mlflow pela rede interna do Docker.
+            # --rm remove o container após a execução.
+            docker compose -f docker-compose.prod.yml run --rm train
 
             echo "--- Registrando modelos no MLflow Registry ---"
-            MLFLOW_TRACKING_URI=http://localhost:5000 python -m src.register_models
+            # Reutiliza a imagem já construída para registrar os modelos no MLflow.
+            docker compose -f docker-compose.prod.yml run --rm \
+              -e MLFLOW_TRACKING_URI=http://mlflow:5000 \
+              train python -m src.register_models
 
             echo "--- Fazendo deploy da API ---"
             # --build reconstrói a imagem com o código atualizado.
