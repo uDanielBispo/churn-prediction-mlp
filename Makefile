@@ -9,7 +9,7 @@
 
 # .PHONY declara que esses alvos são comandos, não arquivos.
 # Sem isso, se existir um arquivo chamado 'test' na pasta, o make o ignoraria.
-.PHONY: lint test run train
+.PHONY: lint test run train register
 
 # Verifica o código em busca de erros de estilo e problemas lógicos.
 # As regras são definidas no pyproject.toml (seção [tool.ruff]).
@@ -31,3 +31,8 @@ run:
 train:
 	python -m src.train_baselines
 	python -m src.train_mlp
+
+# Compara os modelos recém-treinados com os que estão em Production no MLflow
+# Registry e promove se as métricas forem melhores.
+register:
+	python -m src.register_models

@@ -2,14 +2,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Dependências do projeto
+# Copia apenas o pyproject.toml primeiro para instalar dependências.
+# Assim, o Docker reutiliza essa camada em cache enquanto o pyproject.toml
+# não mudar — mesmo que o código em src/ seja alterado.
 COPY pyproject.toml ./
+RUN pip install --upgrade pip && pip install -e .
+
+# Copia o código-fonte após as dependências para aproveitar o cache acima.
 COPY src ./src
-
-COPY src/models ./src/models
-
-RUN python -m pip install --upgrade pip
-RUN pip install -e .
 
 EXPOSE 8000
 
