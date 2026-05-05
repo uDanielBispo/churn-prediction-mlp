@@ -28,14 +28,14 @@ services:
     # inclui a porta (ex: "Host: mlflow:5000"), e o middleware faz match exato.
     command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000 --serve-artifacts --allowed-hosts mlflow,mlflow:5000,localhost,localhost:5000,127.0.0.1,127.0.0.1:5000
     healthcheck:
-      # Verifica um endpoint real da API, não apenas /health.
-      # O /health retorna 200 assim que o Uvicorn sobe, mas os endpoints de API
-      # ficam em 503 até o MLflow terminar de inicializar o banco e o artifact store.
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/api/2.0/mlflow/experiments/list')"]
+      # /health só retorna 200 após os workers do Uvicorn estarem prontos (~13s).
+      # start_period: 30s garante que o container não é marcado healthy antes disso,
+      # mesmo que /health responda cedo durante a inicialização do processo pai.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
       interval: 5s
       timeout: 5s
-      retries: 20
-      start_period: 15s
+      retries: 12
+      start_period: 30s
     restart: unless-stopped
 
   train:
