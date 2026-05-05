@@ -16,11 +16,13 @@ services:
       # Persiste o banco de dados e os artefatos no disco da VPS.
       # Mesmo que o container seja recriado, o histórico de experimentos é mantido.
       - ./mlflow-data:/mlflow
+    environment:
+      # MLFLOW_ALLOWED_HOSTS: permite requisições com Host "mlflow" (nome do serviço
+      # Docker na rede interna). O MLflow 2.10+ rejeita hosts não listados aqui.
+      # Seguro porque a porta não está exposta publicamente.
+      - MLFLOW_ALLOWED_HOSTS=mlflow,localhost,127.0.0.1
     # mlflow server cria o schema do banco automaticamente na primeira execução.
-    # --allowed-hosts: necessário para o MLflow 2.10+ aceitar requisições com
-    # Host "mlflow" (nome do serviço Docker na rede interna). Seguro porque a
-    # porta não está exposta publicamente.
-    command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000 --allowed-hosts mlflow,localhost,127.0.0.1
+    command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000
     restart: unless-stopped
 
   train:
