@@ -26,7 +26,7 @@ services:
     # falha no container da API, que não tem esse volume montado.
     # --allowed-hosts inclui "mlflow:5000" porque o header HTTP enviado pelos containers
     # inclui a porta (ex: "Host: mlflow:5000"), e o middleware faz match exato.
-    command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000 --serve-artifacts --allowed-hosts mlflow,mlflow:5000,localhost,127.0.0.1
+    command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000 --serve-artifacts --allowed-hosts mlflow,mlflow:5000,localhost,localhost:5000,127.0.0.1,127.0.0.1:5000
     healthcheck:
       # Verifica um endpoint real da API, não apenas /health.
       # O /health retorna 200 assim que o Uvicorn sobe, mas os endpoints de API
