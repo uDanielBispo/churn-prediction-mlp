@@ -89,7 +89,7 @@ def register_if_better(experiment_name: str, registry_name: str, artifact_path: 
 
     print(f"  Novo modelo  → {METRIC}: {new_value:.4f}")
     if prod_value is None:
-        print(f"  Em produção  → nenhum modelo registrado ainda")
+        print("  Em produção  → nenhum modelo registrado ainda")
     else:
         print(f"  Em produção  → {METRIC}: {prod_value:.4f}")
 
@@ -98,7 +98,7 @@ def register_if_better(experiment_name: str, registry_name: str, artifact_path: 
         print(f"  Promovido para Production (v{version})")
         return best_run.info.run_id
     else:
-        print(f"  Modelo em produção continua sendo o melhor. Nada alterado.")
+        print("  Modelo em produção continua sendo o melhor. Nada alterado.")
         return None
 
 
