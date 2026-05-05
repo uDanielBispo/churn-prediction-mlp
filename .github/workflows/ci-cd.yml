@@ -87,9 +87,13 @@ jobs:
             cd "$PROJECT_PATH"
             git pull origin main
 
+            echo "--- Construindo imagens ---"
+            # Reconstrói todas as imagens com o código atualizado antes de executar qualquer serviço.
+            docker compose -f docker-compose.prod.yml build
+
             echo "--- Iniciando MLflow (se não estiver rodando) ---"
             # up -d é idempotente: não reinicia um container já em execução.
-            docker compose -f docker-compose.prod.yml up -d --build mlflow
+            docker compose -f docker-compose.prod.yml up -d mlflow
 
             echo "--- Treinando modelos ---"
             # O container train se comunica com o mlflow pela rede interna do Docker.
@@ -103,8 +107,6 @@ jobs:
               train python -m src.register_models
 
             echo "--- Fazendo deploy da API ---"
-            # --build reconstrói a imagem com o código atualizado.
-            # -d roda em background (detached).
-            docker compose -f docker-compose.prod.yml up --build -d api
+            docker compose -f docker-compose.prod.yml up -d api
 
             echo "--- Deploy concluído ---"
