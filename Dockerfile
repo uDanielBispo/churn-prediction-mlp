@@ -10,8 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends make \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --upgrade pip && pip install -e .
 
-# Copia o código-fonte após as dependências para aproveitar o cache acima.
+# Copia o código-fonte e os dados após as dependências para aproveitar o cache acima.
 COPY src ./src
+COPY data ./data
 
 EXPOSE 8000
 
