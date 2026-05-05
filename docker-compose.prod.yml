@@ -10,8 +10,13 @@
 services:
   mlflow:
     build: .
-    # Sem exposição de porta: o MLflow é acessível apenas dentro da rede Docker.
-    # Os containers train e api se comunicam via http://mlflow:5000 internamente.
+    # Porta exposta apenas em 127.0.0.1 da VPS — não acessível pela internet.
+    # Para ver a UI, abrir um túnel SSH a partir da máquina local:
+    #   ssh -L 5000:localhost:5000 <user>@<vps-host>
+    # e depois acessar http://localhost:5000 no navegador.
+    # Os containers train e api continuam usando http://mlflow:5000 pela rede Docker.
+    ports:
+      - "127.0.0.1:5000:5000"
     volumes:
       # Persiste o banco de dados e os artefatos no disco da VPS.
       # Mesmo que o container seja recriado, o histórico de experimentos é mantido.

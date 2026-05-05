@@ -87,6 +87,22 @@ docker compose -f docker-compose.prod.yml run --rm \
 docker compose -f docker-compose.prod.yml up -d api
 ```
 
+### Acessar o MLflow UI da VPS
+
+A porta do MLflow é exposta apenas em `127.0.0.1` da VPS (não acessível pela
+internet, pois o MLflow não tem autenticação). Para ver a UI a partir da sua
+máquina local, abra um túnel SSH:
+
+```bash
+ssh -L 5000:localhost:5000 <usuario>@82.29.57.75
+```
+
+Enquanto a sessão SSH estiver aberta, acesse no navegador:
+
+```
+http://localhost:5000
+```
+
 ### Após a primeira configuração
 
 Todo push na branch `main` dispara o pipeline CI/CD automaticamente:
