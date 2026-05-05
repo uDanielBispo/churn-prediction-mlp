@@ -112,10 +112,19 @@ Configure em **Settings → Secrets and variables → Actions** do repositório:
 
 ## Testes rápidos da API
 
+> A API está publicada na VPS em `http://82.29.57.75:8000`. Para testar contra produção,
+> basta substituir `http://localhost:8000` pelo endereço público nos exemplos abaixo.
+
 ### Verificar se a API está no ar
 
 ```powershell
 curl http://localhost:8000/health
+```
+
+Em produção:
+
+```bash
+curl http://82.29.57.75:8000/health
 ```
 
 Resposta esperada:
@@ -202,6 +211,47 @@ curl -X POST "http://localhost:8000/predict?model_type=mlp" `
 > e boleto eletrônico. Resposta esperada: `{"churn": 1}`.
 >
 > Substitua `model_type=mlp` por `logistic` ou `dummy` para testar os outros modelos.
+
+### Testar a API em produção
+
+Mesmo payload, apontando para a VPS:
+
+```bash
+curl -X POST "http://82.29.57.75:8000/predict?model_type=mlp" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "Tenure_Months": 2,
+    "Monthly_Charges": 70.0,
+    "Gender_Male": 0,
+    "Partner_Yes": 0,
+    "Dependents_Yes": 0,
+    "Phone_Service_Yes": 1,
+    "Multiple_Lines_No_phone_service": 0,
+    "Multiple_Lines_Yes": 0,
+    "Internet_Service_Fiber_optic": 1,
+    "Internet_Service_No": 0,
+    "Online_Security_No_internet_service": 0,
+    "Online_Security_Yes": 0,
+    "Online_Backup_No_internet_service": 0,
+    "Online_Backup_Yes": 0,
+    "Device_Protection_No_internet_service": 0,
+    "Device_Protection_Yes": 0,
+    "Tech_Support_No_internet_service": 0,
+    "Tech_Support_Yes": 0,
+    "Streaming_TV_No_internet_service": 0,
+    "Streaming_TV_Yes": 0,
+    "Streaming_Movies_No_internet_service": 0,
+    "Streaming_Movies_Yes": 0,
+    "Contract_One_year": 0,
+    "Contract_Two_year": 0,
+    "Paperless_Billing_Yes": 1,
+    "Payment_Method_Credit_card_automatic": 0,
+    "Payment_Method_Electronic_check": 1,
+    "Payment_Method_Mailed_check": 0
+  }'
+```
+
+Documentação interativa (Swagger UI): `http://82.29.57.75:8000/docs`
 
 ---
 
