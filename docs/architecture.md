@@ -41,9 +41,9 @@ git push → merge na main
         ↓
 GitHub Actions
   ├── lint + testes
-  ├── make train       → loga no MLflow da VPS
-  ├── make register    → promove no MLflow Registry se melhor
-  └── docker compose   → reinicia container da API
+  ├── docker compose run train          → treina dentro do container, loga no MLflow da VPS
+  ├── docker compose run train register → promove no MLflow Registry se melhor
+  └── docker compose up --build api     → reconstrói e reinicia o container da API
         ↓
 API FastAPI (porta 8000)
         ↓
