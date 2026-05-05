@@ -5,7 +5,7 @@ WORKDIR /app
 # Copia apenas o pyproject.toml primeiro para instalar dependências.
 # Assim, o Docker reutiliza essa camada em cache enquanto o pyproject.toml
 # não mudar — mesmo que o código em src/ seja alterado.
-COPY pyproject.toml ./
+COPY pyproject.toml Makefile ./
 RUN apt-get update && apt-get install -y --no-install-recommends make \
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --upgrade pip && pip install -e .
