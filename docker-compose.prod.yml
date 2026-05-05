@@ -1,10 +1,11 @@
 # docker-compose.prod.yml — configuração para a VPS em produção.
 #
-# Diferenças em relação ao docker-compose.local.yml:
-#   - Não há serviço de treino: o treino acontece no pipeline CI/CD (GitHub Actions).
-#   - A API roda com ENVIRONMENT=production e carrega modelos do MLflow Registry.
+# Diferenças em relação ao docker-compose.yml (local):
 #   - O MLflow persiste dados em ./mlflow-data/ no disco da VPS.
+#   - A API roda com ENVIRONMENT=production e carrega modelos do MLflow Registry.
 #   - restart: unless-stopped garante que os serviços reiniciem após reboot da VPS.
+#   - O serviço train é invocado via "docker compose run --rm train" no pipeline CI/CD
+#     e se comunica com o mlflow pelo nome do serviço na rede interna do Docker.
 
 services:
   mlflow:
@@ -22,6 +23,15 @@ services:
              --default-artifact-root /mlflow/artifacts
              --host 0.0.0.0 --port 5000"
     restart: unless-stopped
+
+  train:
+    build: .
+    environment:
+      # Aponta para o container mlflow na rede interna do Docker.
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      - mlflow
+    command: make train
 
   api:
     build: .
