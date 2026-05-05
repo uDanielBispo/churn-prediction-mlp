@@ -16,12 +16,8 @@ services:
       # Persiste o banco de dados e os artefatos no disco da VPS.
       # Mesmo que o container seja recriado, o histórico de experimentos é mantido.
       - ./mlflow-data:/mlflow
-    command: >
-      sh -c "mlflow db upgrade sqlite:////mlflow/mlflow.db &&
-             mlflow server
-             --backend-store-uri sqlite:////mlflow/mlflow.db
-             --default-artifact-root /mlflow/artifacts
-             --host 0.0.0.0 --port 5000"
+    # mlflow server cria o schema do banco automaticamente na primeira execução.
+    command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --host 0.0.0.0 --port 5000
     restart: unless-stopped
 
   train:
