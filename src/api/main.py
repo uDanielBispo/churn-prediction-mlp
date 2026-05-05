@@ -12,7 +12,6 @@ logger = get_logger(__name__)
 
 app = FastAPI(title="Churn Prediction API")
 
-
 @app.middleware("http")
 async def log_request_latency(request: Request, call_next):
     """Middleware que intercepta todas as requisições HTTP para registrar latência.
