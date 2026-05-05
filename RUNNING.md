@@ -96,9 +96,9 @@ Configure em **Settings → Secrets and variables → Actions** do repositório:
 | Secret | Exemplo | Descrição |
 |---|---|---|
 | `VPS_HOST` | `123.45.67.89` | IP ou hostname da VPS |
-| `VPS_USER` | `ubuntu` | Usuário SSH |
+| `VPS_USER` | `mlfiap2026` | Usuário SSH |
 | `VPS_SSH_KEY` | `-----BEGIN...` | Chave privada SSH |
-| `VPS_PROJECT_PATH` | `/home/ubuntu/churn-prediction-mlp` | Caminho do projeto na VPS |
+| `VPS_PROJECT_PATH` | `/home/mlfiap2026/churn-prediction-mlp` | Caminho do projeto na VPS |
 
 ---
 
