@@ -24,20 +24,10 @@ from src.dataset import ChurnDataset
 from src.early_stopping import EarlyStopping
 from src.model import ChurnMLP
 from src.pipeline import apply_preprocessing, build_preprocessing_pipeline
-from src.utils import find_best_threshold, set_seed
+from src.utils import find_best_threshold, set_seed, setup_mlflow
 
 # Raiz do projeto — calculada uma única vez e reutilizada por todas as funções.
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-
-def setup_mlflow() -> None:
-    """Configura o MLflow para gravar experimentos no banco SQLite local.
-
-    O tracking URI aponta para mlflow.db na raiz do projeto.
-    O registry URI aponta para a pasta mlruns/, onde os artefatos são salvos.
-    """
-    mlflow.set_tracking_uri(f"sqlite:///{os.path.join(ROOT_DIR, 'mlflow.db')}")
-    mlflow.set_registry_uri(f"file://{os.path.join(ROOT_DIR, 'mlruns')}")
 
 
 def load_and_split_data(data_path: str):
@@ -291,6 +281,11 @@ def train_model() -> None:
         mlflow.set_tag("stage", "pytorch_mlp")
         mlflow.set_tag("dataset", "telco_churn_processed")
         mlflow.pytorch.log_model(model, "model")
+
+        # O preprocessor é logado no mesmo run da MLP porque os dois são
+        # versionados juntos — uma versão do modelo só faz sentido com o
+        # preprocessor com o qual foi treinada.
+        mlflow.sklearn.log_model(preprocessor, "preprocessor")
 
         model_path = os.path.join(ROOT_DIR, 'src', 'models', f'{experiment_name}_model.pkl')
         joblib.dump(model, model_path)

@@ -119,10 +119,15 @@ Sugestões:
 
 ## 7. Integração com Sistema
 
-O monitoramento pode ser integrado com:
+Já disponível no projeto:
 
-* Logs da API (`src/api/core/loggin.py`)
-* Ferramentas externas (ex: dashboards, MLflow)
+* Logs estruturados da API (`src/api/core/logger.py`) — registra latência de cada requisição
+* MLflow Tracking — métricas de treino e avaliação registradas a cada run
+* MLflow Registry — histórico de versões dos modelos com métricas associadas
+
+A ser implementado:
+
+* Alertas automáticos para queda de AUC ou mudança de distribuição nas features
 
 ---
 

@@ -1,9 +1,18 @@
-# model_service.py — responsável por carregar os modelos e executar inferência.
+# model_service.py — carrega os modelos e executa a inferência.
 #
 # Os modelos são carregados uma única vez quando o módulo é importado
 # (na inicialização da API), evitando o custo de carregamento a cada requisição.
+#
+# O comportamento muda conforme a variável de ambiente ENVIRONMENT:
+#   - local (padrão): lê os .pkl do disco — sem dependência de servidor externo.
+#   - production:     carrega do MLflow Registry da VPS — sem .pkl no disco.
+
+import os
 
 import joblib
+import mlflow
+import mlflow.pytorch
+import mlflow.sklearn
 import numpy as np
 import pandas as pd
 import torch
@@ -13,34 +22,50 @@ from src.pipeline import OUTPUT_COLS
 
 logger = get_logger(__name__)
 
-# ---------------------------------------------------------------------------
-# Carregamento dos modelos em disco
-# ---------------------------------------------------------------------------
-# joblib.load() lê o arquivo .pkl e reconstrói o objeto Python original
-# (seja um modelo sklearn ou um modelo PyTorch serializado).
+# Lê o ambiente. Se não definido, assume local para não quebrar em desenvolvimento.
+ENV = os.getenv("ENVIRONMENT", "local")
 
 logger.info("Carregando modelos em memória...")
 
-dummy_model = joblib.load("src/models/churn_prediction_dummy_classifier_model.pkl")
-logger.info("Modelo carregado: DummyClassifier")
+if ENV == "production":
+    # Em produção, o MLflow Registry é a fonte da verdade.
+    # MLFLOW_TRACKING_URI aponta para o servidor MLflow da VPS
+    # (definido no docker-compose.prod.yml como http://mlflow:5000).
+    mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000"))
 
-logistic_model = joblib.load("src/models/churn_prediction_logistic_regression_model.pkl")
-logger.info("Modelo carregado: LogisticRegression")
+    dummy_model = mlflow.sklearn.load_model("models:/ChurnDummy/Production")
+    logger.info("Modelo carregado: DummyClassifier (MLflow Registry)")
 
-mlp_model = joblib.load("src/models/churn_prediction_mlp_pytorch_model.pkl")
-logger.info("Modelo carregado: MLP PyTorch")
+    logistic_model = mlflow.sklearn.load_model("models:/ChurnLogistic/Production")
+    logger.info("Modelo carregado: LogisticRegression (MLflow Registry)")
 
-preprocessor = joblib.load("src/models/preprocessor.pkl")
-logger.info("Preprocessor carregado: StandardScaler")
+    mlp_model = mlflow.pytorch.load_model("models:/ChurnMLP/Production")
+    logger.info("Modelo carregado: MLP PyTorch (MLflow Registry)")
+
+    # O preprocessor é versionado junto com a MLP — sempre carregados da mesma versão.
+    preprocessor = mlflow.sklearn.load_model("models:/ChurnPreprocessor/Production")
+    logger.info("Preprocessor carregado: StandardScaler (MLflow Registry)")
+
+else:
+    # Ambiente local: lê os .pkl gerados por make train.
+    dummy_model = joblib.load("src/models/churn_prediction_dummy_classifier_model.pkl")
+    logger.info("Modelo carregado: DummyClassifier")
+
+    logistic_model = joblib.load("src/models/churn_prediction_logistic_regression_model.pkl")
+    logger.info("Modelo carregado: LogisticRegression")
+
+    mlp_model = joblib.load("src/models/churn_prediction_mlp_pytorch_model.pkl")
+    logger.info("Modelo carregado: MLP PyTorch")
+
+    preprocessor = joblib.load("src/models/preprocessor.pkl")
+    logger.info("Preprocessor carregado: StandardScaler")
 
 
 def _build_features(data) -> np.ndarray:
     """Converte os campos do schema Pydantic em um array NumPy para o modelo.
 
-    Centraliza a extração de features em um único lugar, eliminando a duplicação
-    que existia antes em cada função de predição separada.
-
-    A ordem dos campos deve corresponder à ordem das colunas usadas no treino.
+    A ordem dos campos deve corresponder à ordem de OUTPUT_COLS definida em pipeline.py,
+    que é a mesma ordem usada durante o treino.
     """
     return np.array([[
         data.Tenure_Months,
@@ -81,8 +106,7 @@ def dummy_predict(data) -> int:
     servindo como linha de base mínima para comparação.
     """
     features = _build_features(data)
-    prediction = dummy_model.predict(features)
-    return int(prediction[0])
+    return int(dummy_model.predict(features)[0])
 
 
 def logistic_predict(data) -> int:
@@ -91,8 +115,7 @@ def logistic_predict(data) -> int:
     Modelo linear treinado com sklearn, mais interpretável que a MLP.
     """
     features = _build_features(data)
-    prediction = logistic_model.predict(features)
-    return int(prediction[0])
+    return int(logistic_model.predict(features)[0])
 
 
 def mlp_predict(data) -> int:
@@ -107,6 +130,8 @@ def mlp_predict(data) -> int:
     Tenure Months e Monthly Charges chegam na escala errada e a rede prevê mal.
     """
     features = _build_features(data)
+
+    # Cria DataFrame com os nomes de coluna que o preprocessor espera.
     df = pd.DataFrame(features, columns=OUTPUT_COLS)
     features_scaled = preprocessor.transform(df)
 

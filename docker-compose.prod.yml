@@ -1,0 +1,79 @@
+# docker-compose.prod.yml — configuração para a VPS em produção.
+#
+# Diferenças em relação ao docker-compose.yml (local):
+#   - O MLflow persiste dados em ./mlflow-data/ no disco da VPS.
+#   - A API roda com ENVIRONMENT=production e carrega modelos do MLflow Registry.
+#   - restart: unless-stopped garante que os serviços reiniciem após reboot da VPS.
+#   - O serviço train é invocado via "docker compose run --rm train" no pipeline CI/CD
+#     e se comunica com o mlflow pelo nome do serviço na rede interna do Docker.
+
+services:
+  mlflow:
+    build: .
+    # Porta exposta apenas em 127.0.0.1 da VPS — não acessível pela internet.
+    # Para ver a UI, abrir um túnel SSH a partir da máquina local:
+    #   ssh -L 5000:localhost:5000 <user>@<vps-host>
+    # e depois acessar http://localhost:5000 no navegador.
+    # se quiser deixar acessível publicamente, trocar por "5000:5000" e configurar firewall para permitir acesso apenas à porta 5000.
+    # Os containers train e api continuam usando http://mlflow:5000 pela rede Docker.
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persiste o banco de dados e os artefatos no disco da VPS.
+      # Mesmo que o container seja recriado, o histórico de experimentos é mantido.
+      - ./mlflow-data:/mlflow
+    # mlflow server cria o schema do banco automaticamente na primeira execução.
+    # --allowed-hosts: permite requisições com Host "mlflow" (nome do serviço Docker).
+    # O MLflow 2.10+ rejeita por padrão qualquer host que não seja localhost/127.0.0.1.
+    # --serve-artifacts + --artifacts-destination: o servidor armazena os artefatos
+    # em /mlflow/artifacts e os entrega via HTTP usando o esquema mlflow-artifacts://.
+    # Importante NÃO usar --default-artifact-root aqui: ele sobrescreve o proxy e
+    # faz com que o MLflow grave a URI como file:///mlflow/artifacts/..., o que
+    # quebra a API (ela não tem esse volume montado e tentaria abrir o caminho local).
+    # --allowed-hosts inclui "mlflow:5000" porque o header HTTP enviado pelos containers
+    # inclui a porta (ex: "Host: mlflow:5000"), e o middleware faz match exato.
+    command: mlflow server --backend-store-uri sqlite:////mlflow/mlflow.db --artifacts-destination /mlflow/artifacts --host 0.0.0.0 --port 5000 --serve-artifacts --allowed-hosts mlflow,mlflow:5000,localhost,localhost:5000,127.0.0.1,127.0.0.1:5000,82.29.57.75:5000
+    environment:
+      # MLFLOW_SERVER_CORS_ALLOWED_ORIGINS: lista comma-separada de origens (Origin
+      # header com esquema) autorizadas pelo middleware CORSBlockingMiddleware do
+      # MLflow. Sem isso, requisições POST/PUT/DELETE da UI retornam 403 com a
+      # mensagem "Blocked cross-origin request from http://82.29.57.75:5000".
+      # Origens em localhost/127.0.0.1 são liberadas automaticamente por
+      # is_localhost_origin(), por isso o acesso via túnel SSH funciona sem
+      # nenhuma configuração extra.
+      - MLFLOW_SERVER_CORS_ALLOWED_ORIGINS=http://82.29.57.75:5000
+    healthcheck:
+      # /health só retorna 200 após os workers do Uvicorn estarem prontos (~13s).
+      # start_period: 30s garante que o container não é marcado healthy antes disso,
+      # mesmo que /health responda cedo durante a inicialização do processo pai.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  train:
+    build: .
+    environment:
+      # Aponta para o container mlflow na rede interna do Docker.
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    command: make train
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Sinaliza para model_service.py que deve carregar modelos do MLflow Registry.
+      - ENVIRONMENT=production
+      # mlflow é o nome do serviço acima — o Docker resolve o hostname automaticamente
+      # dentro da rede interna do compose.
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    restart: unless-stopped

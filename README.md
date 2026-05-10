@@ -86,14 +86,17 @@ Essas variáveis foram escolhidas com base na análise exploratória e represent
 │   ├── early_stopping.py         # Early stopping para evitar overfitting
 │   ├── model.py                  # Arquitetura da rede neural MLP (ChurnMLP)
 │   ├── pipeline.py               # Pipeline sklearn de pré-processamento (StandardScaler)
-│   ├── train_mlp.py              # Script de treinamento da MLP com MLflow
-│   ├── models/                   # Artefatos treinados (.pkl)
+│   ├── train_baselines.py        # Treina Logística e Dummy; loga no MLflow
+│   ├── train_mlp.py              # Treina a MLP; loga modelo e preprocessor no MLflow
+│   ├── register_models.py        # Promove modelos para Production no MLflow Registry
+│   ├── utils.py                  # Utilitários: set_seed, find_best_threshold, setup_mlflow
+│   ├── models/                   # Artefatos treinados (.pkl) — usados apenas localmente
 │   └── api/                      # Serviço de inferência
 │       ├── main.py               # Inicialização do FastAPI e middleware de latência
 │       ├── routes.py             # Endpoints: GET /health, POST /predict
 │       ├── schemas.py            # Validação de entrada com Pydantic (CustomerData)
 │       ├── services/
-│       │   └── model_service.py  # Carregamento dos modelos e lógica de predição
+│       │   └── model_service.py  # Carrega modelos (.pkl local ou MLflow Registry em prod)
 │       └── core/
 │           └── logger.py         # Logger estruturado (timestamp | nível | módulo)
 
@@ -106,8 +109,12 @@ Essas variáveis foram escolhidas com base na análise exploratória e represent
 │   ├── src/                      # Regressão Logística + DummyClassifier com MLflow
 │   └── tests/                    # Testes unitários dos modelos baseline
 
+├── .github/workflows/ci-cd.yml   # Pipeline CI/CD: lint, testes, treino e deploy
+├── docker-compose.yml            # Compose para desenvolvimento local
+├── docker-compose.prod.yml       # Compose para a VPS em produção
+├── Dockerfile                    # Imagem da API usada em ambos os ambientes
 ├── pyproject.toml                # Dependências, ruff e pytest centralizados
-├── Makefile                      # Atalhos: make lint | test | run | train
+├── Makefile                      # Atalhos: make lint | test | run | train | register
 └── README.md                     # Documentação principal
 ```
 
@@ -147,18 +154,20 @@ pip install -e ".[dev]"
 
 ---
 
-### 4. Treinar o modelo MLP
+### 4. Treinar os modelos
 
 ```bash
-python -m src.train_mlp
+make train
 ```
 
-> O `-m` é necessário para rodar como módulo a partir da raiz do projeto. Usar `python src/train_mlp.py` diretamente causa erro de import.
+Esse comando treina os três modelos em sequência (Logística, Dummy e MLP) e loga os resultados no MLflow local. Os artefatos gerados ficam em:
+- `src/models/churn_prediction_logistic_regression_model.pkl`
+- `src/models/churn_prediction_dummy_classifier_model.pkl`
+- `src/models/churn_prediction_mlp_pytorch_model.pkl`
+- `src/models/preprocessor.pkl`
+- `best_mlp_model.pth`
 
-Os artefatos gerados ficam em:
-- `src/models/churn_prediction_mlp_pytorch_model.pkl` — modelo treinado
-- `src/models/preprocessor.pkl` — pipeline de pré-processamento
-- `best_mlp_model.pth` — pesos do melhor checkpoint
+> O `-m` é necessário ao rodar os scripts diretamente. Usar `python src/train_mlp.py` sem `-m` causa erro de import. O `make train` já cuida disso.
 
 ---
 
@@ -255,6 +264,7 @@ make lint
 | Comando | O que faz |
 |---|---|
 | `make train` | Treina os modelos de baseline (Logística + Dummy) e a MLP |
+| `make register` | Compara métricas com Production e promove no MLflow Registry se melhor |
 | `make test` | Executa os 29 testes automatizados |
 | `make run` | Sobe a API FastAPI com hot-reload |
 | `make lint` | Verifica o código com ruff |
@@ -278,7 +288,9 @@ Os modelos serão avaliados utilizando métricas adequadas para problemas de cla
 2. Baselines (Dummy + Regressão Logística)
 3. MLP com PyTorch
 4. API com FastAPI
-5. Documentação e monitoramento
+5. Containerização com Docker
+6. Pipeline CI/CD com GitHub Actions e deploy automatizado na VPS
+7. Documentação e estratégia de monitoramento
 
 ---
 
@@ -310,15 +322,16 @@ A documentação do projeto está organizada na pasta `docs/` e cobre desde aspe
 * ✅ API FastAPI com logging estruturado e middleware de latência
 * ✅ 29 testes automatizados (smoke, schema com Pandera, endpoints)
 * ✅ Infraestrutura: pyproject.toml, Makefile, ruff
-* ⏳ Deploy em nuvem
+* ✅ Containerização com Docker
+* ✅ Pipeline CI/CD com GitHub Actions e deploy automatizado na VPS
+* ✅ MLflow Registry para versionamento e promoção de modelos
+* ⏳ Monitoramento contínuo em produção
 
 ---
 
 ## Próximos Passos
 
-* Deploy em ambiente cloud
-* Containerização com Docker
-* Monitoramento contínuo em produção
+* Implementar monitoramento contínuo de métricas e data drift em produção
 
 ---
 

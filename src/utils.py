@@ -3,11 +3,35 @@
 # Padrão Extract Module: funções que não pertencem a nenhum módulo específico
 # (não são de treino, nem de pipeline, nem de API) vivem aqui.
 
+import os
 import random
 
+import mlflow
 import numpy as np
 import torch
 from sklearn.metrics import f1_score
+
+# __file__ é o caminho deste arquivo (src/utils.py).
+# Dois dirname sobem dois níveis: src/ → raiz do projeto.
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def setup_mlflow() -> None:
+    """Configura o MLflow para gravar experimentos.
+
+    Se a variável de ambiente MLFLOW_TRACKING_URI estiver definida (ex: em CI/CD
+    apontando para o servidor da VPS), usa ela. Caso contrário, cai no banco SQLite
+    local — comportamento padrão para rodar na máquina do desenvolvedor.
+    """
+    tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
+    if tracking_uri:
+        # Ambiente remoto (CI/CD ou VPS): o próprio servidor MLflow gerencia o registry,
+        # não é necessário setar registry_uri separadamente.
+        mlflow.set_tracking_uri(tracking_uri)
+    else:
+        # Ambiente local: SQLite na raiz do projeto + pasta mlruns/ para artefatos.
+        mlflow.set_tracking_uri(f"sqlite:///{os.path.join(ROOT_DIR, 'mlflow.db')}")
+        mlflow.set_registry_uri(f"file://{os.path.join(ROOT_DIR, 'mlruns')}")
 
 
 def set_seed(seed: int = 42) -> None:
