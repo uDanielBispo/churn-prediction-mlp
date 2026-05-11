@@ -1,5 +1,12 @@
 # Churn Prediction com Machine Learning (MLP)
 
+## Links uteis:
+[Clique aqui para acessar o video STAR no youtube](https://www.youtube.com/watch?v=oqNWGabEh1o)
+
+[Fast API](http://82.29.57.75:8000/docs)
+
+[MLFlow](http://82.29.57.75:5000/)
+
 ## Introdução
 
 A retenção de clientes é um dos principais desafios em empresas de telecomunicações. A perda de clientes (churn) impacta diretamente a receita e o crescimento do negócio, tornando essencial a identificação antecipada de clientes com maior risco de cancelamento.
@@ -119,97 +126,166 @@ Essas variáveis foram escolhidas com base na análise exploratória e represent
 ```
 
 
+--- 
+## Como Rodar o Projeto
+
+### Objetivo
+
+Executar a solução de churn de ponta a ponta em um ambiente isolado:
+- API FastAPI para inferência
+- MLflow UI para visualização de experimentos
+- Treinamento PyTorch para registrar métricas e artefatos
+
+### Requisitos
+
+- Docker Desktop instalado e em execução
+- Repositório clonado no host
+
 ---
 
-## Como Executar o Projeto
+### Ambiente local (desenvolvimento)
 
-### 1. Clonar o repositório
+#### Passos para rodar
+
+1. Abra o Docker Desktop.
+2. Navegue até a raiz do projeto.
+3. Suba o MLflow e aguarde alguns minutos:
+   ```powershell
+   docker compose up -d mlflow
+   ```
+4. Rode o treinamento para gerar experimentos e artefatos:
+   ```powershell
+   docker compose run --rm train
+   ```
+    > O serviço `train` executa `make train`, que treina os modelos de baseline
+   > (Logística + Dummy) e a MLP em sequência, salvando os `.pkl` em `src/models/`
+   > e logando métricas no MLflow local.
+5. Suba a API :
+   ```powershell
+   docker compose up -d api
+   ```
+
+5. Para parar os serviços:
+   ```powershell
+   docker compose down
+   ```
+
+#### URLs de acesso
+
+- API: `http://localhost:8000`
+- Documentação da API: `http://localhost:8000/docs`
+- MLflow UI: `http://localhost:5000`
+
+#### O que cada serviço faz
+
+- `api` → executa a API FastAPI na porta `8000`
+- `mlflow` → executa o MLflow UI na porta `5000`
+- `train` → treina Logística, Dummy e MLP; registra resultados no MLflow local
+
+---
+
+### Ambiente de produção (VPS)
+
+#### Links de prod:
+Os links abaixo ja estão implementados em uma VPS do Hostinger, disponiveis para teste dos avaliadores.
+- [Fast API](http://82.29.57.75:8000/docs)
+- [MLFlow](http://82.29.57.75:5000/)
+
+#### Processo para deploy na VPS
+
+Usa `docker-compose.prod.yml`. A VPS só precisa ter **Docker e git** instalados —
+todo o restante (Python, dependências, treino) roda dentro de containers.
+
+##### Primeira configuração na VPS
+
+A primeira execução do pipeline CI/CD já cuida de tudo automaticamente:
+clona o repositório, sobe o MLflow, treina os modelos e faz o deploy da API.
+
+Caso queira executar manualmente antes do primeiro merge na `main`:
 
 ```bash
+# 1. Clonar o repositório
 git clone https://github.com/uDanielBispo/churn-prediction-mlp.git
 cd churn-prediction-mlp
+
+# 2. Subir o MLflow persistente
+docker compose -f docker-compose.prod.yml up -d mlflow
+
+# 3. Treinar os modelos e registrar no MLflow Registry (via Docker)
+docker compose -f docker-compose.prod.yml run --rm train
+docker compose -f docker-compose.prod.yml run --rm \
+  -e MLFLOW_TRACKING_URI=http://mlflow:5000 \
+  train python -m src.register_models
+
+# 4. Subir a API (carrega os modelos do MLflow Registry)
+docker compose -f docker-compose.prod.yml up -d api
 ```
 
----
+##### Acessar o MLflow UI da VPS
 
-### 2. Criar o ambiente virtual
-
-> **Atenção:** use Python 3.11 especificamente. Versões mais recentes (3.12+) ainda não possuem suporte completo ao PyTorch.
+A porta do MLflow é exposta apenas em `127.0.0.1` da VPS (não acessível pela
+internet, pois o MLflow não tem autenticação). Para ver a UI a partir da sua
+máquina local, abra um túnel SSH:
 
 ```bash
-python3.11 -m venv .venv
-source .venv/bin/activate    # macOS/Linux
-.venv\Scripts\activate       # Windows
+ssh -L 5000:localhost:5000 <usuario>@82.29.57.75
 ```
 
----
+Enquanto a sessão SSH estiver aberta, acesse no navegador:
 
-### 3. Instalar o projeto e suas dependências
-
-O comando abaixo instala todas as dependências (produção + desenvolvimento) e registra o projeto como pacote, permitindo que os imports `from src.X import Y` funcionem corretamente:
-
-```bash
-pip install -e ".[dev]"
+```
+http://localhost:5000
 ```
 
----
+##### Após a primeira configuração
 
-### 4. Treinar os modelos
+Todo push na branch `main` dispara o pipeline CI/CD automaticamente:
 
-```bash
-make train
+```
+push → lint → testes → treino na VPS → registro no MLflow → restart da API
 ```
 
-Esse comando treina os três modelos em sequência (Logística, Dummy e MLP) e loga os resultados no MLflow local. Os artefatos gerados ficam em:
-- `src/models/churn_prediction_logistic_regression_model.pkl`
-- `src/models/churn_prediction_dummy_classifier_model.pkl`
-- `src/models/churn_prediction_mlp_pytorch_model.pkl`
-- `src/models/preprocessor.pkl`
-- `best_mlp_model.pth`
+Nenhuma intervenção manual é necessária.
 
-> O `-m` é necessário ao rodar os scripts diretamente. Usar `python src/train_mlp.py` sem `-m` causa erro de import. O `make train` já cuida disso.
+##### Segredos necessários no GitHub Actions
 
----
+Configure em **Settings → Secrets and variables → Actions** do repositório:
 
-### 5. Executar os testes
-
-```bash
-pytest tests/ -v
-```
-
-Ou usando o Makefile:
-
-```bash
-make test
-```
-
----
-
-### 6. Subir a API
-
-```bash
-uvicorn src.api.main:app --reload
-```
-
-Ou usando o Makefile:
-
-```bash
-make run
-```
-
-Acesse a documentação interativa em: [http://localhost:8000/docs](http://localhost:8000/docs)
-
-**Endpoints disponíveis:**
-
-| Método | Rota | Descrição |
+| Secret | Exemplo | Descrição |
 |---|---|---|
-| `GET` | `/health` | Verifica se a API está no ar |
-| `POST` | `/predict?model_type=logistic` | Previsão com Regressão Logística (padrão) |
-| `POST` | `/predict?model_type=mlp` | Previsão com rede neural MLP |
-| `POST` | `/predict?model_type=dummy` | Previsão com modelo baseline |
+| `VPS_HOST` | `123.45.67.89` | IP ou hostname da VPS |
+| `VPS_USER` | `mlfiap2026` | Usuário SSH |
+| `VPS_SSH_KEY` | `-----BEGIN...` | Chave privada SSH |
+| `VPS_PROJECT_PATH` | `/home/mlfiap2026/churn-prediction-mlp` | Caminho do projeto na VPS |
 
-**Exemplo de requisição:**
+---
 
+##### Testes rápidos da API
+
+> A API está publicada na VPS em `http://82.29.57.75:8000`. Para testar contra produção,
+> basta substituir `http://localhost:8000` pelo endereço público nos exemplos abaixo.
+
+##### Verificar se a API está no ar
+
+```powershell
+curl http://localhost:8000/health
+```
+
+Em produção:
+
+```bash
+curl http://82.29.57.75:8000/health
+```
+
+Resposta esperada:
+
+```json
+{"status":"ok"}
+```
+
+##### Fazer uma predição com o modelo MLP
+
+**macOS/Linux:**
 ```bash
 curl -X POST "http://localhost:8000/predict?model_type=mlp" \
   -H "Content-Type: application/json" \
@@ -245,29 +321,99 @@ curl -X POST "http://localhost:8000/predict?model_type=mlp" \
   }'
 ```
 
-> Perfil de alto risco: contrato mês a mês, 2 meses de relacionamento, internet fibra ótica e pagamento por boleto eletrônico. Resposta esperada: `{"churn": 1}`.
+**Windows (PowerShell):**
+```powershell
+curl -X POST "http://localhost:8000/predict?model_type=mlp" `
+  -H "Content-Type: application/json" `
+  -d '{
+    "Tenure_Months": 2,
+    "Monthly_Charges": 70.0,
+    "Gender_Male": 0,
+    "Partner_Yes": 0,
+    "Dependents_Yes": 0,
+    "Phone_Service_Yes": 1,
+    "Multiple_Lines_No_phone_service": 0,
+    "Multiple_Lines_Yes": 0,
+    "Internet_Service_Fiber_optic": 1,
+    "Internet_Service_No": 0,
+    "Online_Security_No_internet_service": 0,
+    "Online_Security_Yes": 0,
+    "Online_Backup_No_internet_service": 0,
+    "Online_Backup_Yes": 0,
+    "Device_Protection_No_internet_service": 0,
+    "Device_Protection_Yes": 0,
+    "Tech_Support_No_internet_service": 0,
+    "Tech_Support_Yes": 0,
+    "Streaming_TV_No_internet_service": 0,
+    "Streaming_TV_Yes": 0,
+    "Streaming_Movies_No_internet_service": 0,
+    "Streaming_Movies_Yes": 0,
+    "Contract_One_year": 0,
+    "Contract_Two_year": 0,
+    "Paperless_Billing_Yes": 1,
+    "Payment_Method_Credit_card_automatic": 0,
+    "Payment_Method_Electronic_check": 1,
+    "Payment_Method_Mailed_check": 0
+  }'
+```
+
+> Perfil de alto risco: contrato mês a mês, 2 meses de relacionamento, fibra ótica
+> e boleto eletrônico. Resposta esperada: `{"churn": 1}`.
 >
 > Substitua `model_type=mlp` por `logistic` ou `dummy` para testar os outros modelos.
 
----
+##### Testar a API em produção
 
-### 7. Verificar qualidade do código
+Mesmo payload, apontando para a VPS:
 
 ```bash
-make lint
+curl -X POST "http://82.29.57.75:8000/predict?model_type=mlp" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "Tenure_Months": 2,
+    "Monthly_Charges": 70.0,
+    "Gender_Male": 0,
+    "Partner_Yes": 0,
+    "Dependents_Yes": 0,
+    "Phone_Service_Yes": 1,
+    "Multiple_Lines_No_phone_service": 0,
+    "Multiple_Lines_Yes": 0,
+    "Internet_Service_Fiber_optic": 1,
+    "Internet_Service_No": 0,
+    "Online_Security_No_internet_service": 0,
+    "Online_Security_Yes": 0,
+    "Online_Backup_No_internet_service": 0,
+    "Online_Backup_Yes": 0,
+    "Device_Protection_No_internet_service": 0,
+    "Device_Protection_Yes": 0,
+    "Tech_Support_No_internet_service": 0,
+    "Tech_Support_Yes": 0,
+    "Streaming_TV_No_internet_service": 0,
+    "Streaming_TV_Yes": 0,
+    "Streaming_Movies_No_internet_service": 0,
+    "Streaming_Movies_Yes": 0,
+    "Contract_One_year": 0,
+    "Contract_Two_year": 0,
+    "Paperless_Billing_Yes": 1,
+    "Payment_Method_Credit_card_automatic": 0,
+    "Payment_Method_Electronic_check": 1,
+    "Payment_Method_Mailed_check": 0
+  }'
 ```
+
+Documentação interativa (Swagger UI): `http://82.29.57.75:8000/docs`
 
 ---
 
-## Atalhos do Makefile
+##### Testes automatizados
 
-| Comando | O que faz |
-|---|---|
-| `make train` | Treina os modelos de baseline (Logística + Dummy) e a MLP |
-| `make register` | Compara métricas com Production e promove no MLflow Registry se melhor |
-| `make test` | Executa os 29 testes automatizados |
-| `make run` | Sobe a API FastAPI com hot-reload |
-| `make lint` | Verifica o código com ruff |
+Para validar o projeto com pytest:
+
+```powershell
+pytest tests/ -v
+```
+
+Os testes de smoke e schema pulam automaticamente se o CSV processado não estiver presente.
 
 ---
 
